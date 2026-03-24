@@ -64,7 +64,7 @@ def parse_civil_code_perfect(file_path, output_json):
             article_num = article_match.group(1)
             content = article_match.group(2)
             record = {
-                "id": f"Civil_Code_{article_num}",
+                "id": f"Civil_Code_{article_num}", # 后面想用其他法律这里要改前缀
                 "article_number": article_num,
                 "hierarchy": {
                     "book": current_book,
