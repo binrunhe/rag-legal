@@ -65,6 +65,7 @@ def call_ollama_rag(query_text, retrieved_docs,history,model_name):
 """
 
     # 调用 Ollama
+    print('正在加载大语言模型..')
     url = "http://localhost:11434/api/generate"
     payload = {
         "model": model_name,

@@ -2,9 +2,9 @@ from data_process import *
 from inject import *
 
 # 需修改的参数
-docx_name='中华人民共和国民法典_20200528.docx'
-json_name='civil_code_1260.json'
-English_name='Civil_code'
+docx_name='中华人民共和国宪法（2018年修正文本）_20180311.docx'
+json_name='prc_constitution_143.json'
+English_name='PRC_Constitution'
 
 # 无需修改的参数
 file_path=f'法律原文/{docx_name}'

@@ -9,8 +9,10 @@ def parse_code_perfect(file_path, output_json,English_name):
 
     file_name = os.path.basename(file_path)  # 提取文件名 包含后缀
     file_name_without_ext = os.path.splitext(file_name)[0]  # 去掉文件后缀
-    # 按第一个"_"分割，取前面的部分作为source；如果没有"_"，则用完整的文件名（去后缀）
-    source_name = file_name_without_ext.split('_')[0] if '_' in file_name_without_ext else file_name_without_ext
+    # 第二次优化逻辑,用正则表达式解决_或空格  未来再观望文件名是否还会有bug
+    split_parts = re.split(r'[_\s\u3000（(]', file_name_without_ext)
+    # 取第一部分，并再次 strip() 确保两头没残留空格
+    source_name = split_parts[0].strip()
 
     # 层级
     current_book = ""     # 编
