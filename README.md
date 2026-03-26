@@ -1,5 +1,8 @@
 相关数据库已经建立好,只需要配置环境
 
+终端输入:pip install -r requirements.txt
+
+安装ollama,并且拉取模型
 第一步：安装 Ollama。
 
 第二步：运行 ollama pull Lusizo/qwen2.5-7b-instruct-1m:latest。
