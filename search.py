@@ -1,13 +1,14 @@
 import torch
 import chromadb
 from sentence_transformers import SentenceTransformer
+from RAG import *
 
 db_path = "./legal_vector_db"
 collection_name = "china_civil_code"
 model_name = "Qwen/Qwen3-Embedding-0.6B"
 
-def run_search():
-    print("正在初始化检索引擎...")
+def run_search(query_text):
+    print("正在加载embedding模型...")
     model = SentenceTransformer(
         model_name,
         device="cuda",
@@ -17,10 +18,9 @@ def run_search():
     client = chromadb.PersistentClient(path=db_path)
     collection = client.get_collection(name=collection_name)
 
-    query_text = "我把车停在楼下，结果被楼上掉下来的花盆砸坏了，物业有责任吗？"
 
     print(f"\n用户咨询: {query_text}")
-    print("正在检索法律依据...\n")
+    print("正在检索法律依据\n")
 
     # 核心：使用 query 专门的 Prompt 进行编码
     # 先把要查询句子句子转成向量
@@ -39,7 +39,7 @@ def run_search():
 
     #  打印结果
     # results包含documents,metadatas,distances
-    # [0]的原因是支持一下多查询
+    # [0]的原因是支持一下多查询,可能里面会有多个数据
     for i in range(len(results['documents'][0])):
         doc = results['documents'][0][i]
         meta = results['metadatas'][0][i]
@@ -60,5 +60,4 @@ def run_search():
         print(f"语义距离：{score:.4f}")
         print("-" * 60)
 
-if __name__ == "__main__":
-    run_search()
+    return results
