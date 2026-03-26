@@ -1,7 +1,6 @@
 import requests
-import json
 
-def rewrite_query(user_query, history):
+def rewrite_query(user_query, history,model_name):
     print("\n正在分析用户意图并重写查询...")
 
     """
@@ -15,6 +14,7 @@ def rewrite_query(user_query, history):
 
     prompt = f"""你是一个法律咨询意图解析器。请结合【对话历史】，将用户的【最新提问】改写为一个独立的搜索语句。
     如果用户是在闲聊或询问记忆（如“你还记得吗”），请将其重写为“请总结并确认之前的咨询内容”。
+    如果提问涉及新的法律名词，即便之前在聊别的，也要将其重写为该名词的完整法律咨询意图。
     如果用户是追问，请补全追问中的主语和背景。
 
     【对话历史】：
@@ -25,14 +25,14 @@ def rewrite_query(user_query, history):
 
     请直接输出改写后的搜索语句："""
 
-    payload = {"model": "Lusizo/qwen2.5-7b-instruct-1m:latest", "prompt": prompt, "stream": False}
+    payload = {"model": model_name, "prompt": prompt, "stream": False}
     try:
         response = requests.post("http://localhost:11434/api/generate", json=payload)
         return response.json().get("response", user_query).strip()
     except:
         return user_query
 
-def call_ollama_rag(query_text, retrieved_docs,history):
+def call_ollama_rag(query_text, retrieved_docs,history,model_name):
     context = ""
     for i, item in enumerate(retrieved_docs):
         meta = item['metadata']
@@ -67,7 +67,7 @@ def call_ollama_rag(query_text, retrieved_docs,history):
     # 调用 Ollama
     url = "http://localhost:11434/api/generate"
     payload = {
-        "model": "Lusizo/qwen2.5-7b-instruct-1m:latest",
+        "model": model_name,
         "prompt": prompt,
         "stream": False
     }

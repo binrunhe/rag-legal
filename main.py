@@ -1,17 +1,22 @@
 from search import *
 from RAG import *
 
+db_path = "./legal_vector_db"
+collection_name = "china_law_library"
+search_model_name = "Qwen/Qwen3-Embedding-0.6B"
+rag_model_name='Lusizo/qwen2.5-7b-instruct-1m:latest'
+distance_threshold = 1.05
+
 def main():
     history = [] # 历史记录
     # 设定一个语义距离门槛，Qwen3-Embedding 在 1.0 以上通常相关性就很低了
-    distance_threshold = 1.05
 
     while True:
         user_input = input("\n请输入您的问题:...(q,quit,exit退出.. )\n")
         if user_input.lower() in ['q', 'quit', 'exit']: break
 
         #  重写请求：将模糊的“上面聊了什么”转为“总结对话” 不然bug会是搜索'上面聊了什么'
-        search_query = rewrite_query(user_input, history)
+        search_query = rewrite_query(user_input, history,rag_model_name)
 
         # 意图预判：如果是询问记忆或闲聊，直接跳过检索
         # 简单判断重写后的词是否包含特定关键词
@@ -22,7 +27,7 @@ def main():
 
         if not should_skip_search:
             # 检索
-            results = run_search(search_query)
+            results = run_search(search_query,db_path,collection_name,search_model_name)
 
             # 距离太远，则不传给模型
             if results and 'distances' in results and results['distances'][0][0] < distance_threshold:   # 第一个最小的都不行那就都不做了
@@ -39,7 +44,7 @@ def main():
 
         # 生成回答：传入过滤后的文档和历史记录
         # 如果 formatted_docs 为空，Qwen 就会根据 Prompt 里的要求，只看 history 回答
-        answer = call_ollama_rag(user_input, formatted_docs, history)
+        answer = call_ollama_rag(user_input, formatted_docs, history,rag_model_name)
 
         print("\n" + "="*30 + " 律师建议 " + "="*30)
         print(answer)

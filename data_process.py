@@ -3,7 +3,7 @@ import re
 import json
 import os
 
-def parse_civil_code_perfect(file_path, output_json):
+def parse_code_perfect(file_path, output_json,English_name):
     doc = docx.Document(file_path)
     legal_records = []
 
@@ -64,7 +64,7 @@ def parse_civil_code_perfect(file_path, output_json):
             article_num = article_match.group(1)
             content = article_match.group(2)
             record = {
-                "id": f"Civil_Code_{article_num}", # 后面想用其他法律这里要改前缀
+                "id": f"{English_name}_{article_num}", # 后面想用其他法律这里要改前缀
                 "article_number": article_num,
                 "hierarchy": {
                     "book": current_book,
@@ -95,4 +95,4 @@ def parse_civil_code_perfect(file_path, output_json):
     print(f"文件已保存至：{os.path.abspath(output_json)}")  # 输出绝对路径
 
 
-parse_civil_code_perfect("法律原文/中华人民共和国民法典_20200528.docx", "code_json/civil_code_1260.json")
+# parse_code_perfect("法律原文/中华人民共和国刑法_20201226.docx", "code_json/criminal_law_452.json",'Criminal_law')

@@ -1,13 +1,12 @@
 import torch
 import chromadb
 from sentence_transformers import SentenceTransformer
-from RAG import *
 
-db_path = "./legal_vector_db"
-collection_name = "china_civil_code"
-model_name = "Qwen/Qwen3-Embedding-0.6B"
+# db_path = "./legal_vector_db"
+# collection_name = "china_civil_code"
+# model_name = "Qwen/Qwen3-Embedding-0.6B"
 
-def run_search(query_text):
+def run_search(query_text,db_path,collection_name,model_name,):
     print("正在加载embedding模型...")
     model = SentenceTransformer(
         model_name,
@@ -54,6 +53,7 @@ def run_search(query_text):
         full_path = " > ".join([lvl for lvl in levels if lvl])
 
         print(f"【匹配条文 {i+1}】")
+        print(f"来源：{meta['source']}")
         print(f"法条编号：{meta['article_number']}")
         print(f"法律层级：{full_path}")
         print(f"法律原文：{doc}")
