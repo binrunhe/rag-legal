@@ -1,9 +1,19 @@
 from sentence_transformers import CrossEncoder
 
+# 解决模型只需加载一次问题
+_reranker_instance = None
+
+def get_rerank_model(model_name, max_length):
+    global _reranker_instance
+    if _reranker_instance is None:
+        print(f"[首次加载] 正在初始化 Reranker模型: {model_name}")
+        _reranker_instance = CrossEncoder(model_name, max_length=max_length)
+    return _reranker_instance
+
 # 把search找到的results再塞进rerank,找到更相近的
 def rerank_context(query, raw_docs, model_name ,max_length,top_n=3, threshold=-5):
 
-    rerank_model = CrossEncoder(model_name, max_length=max_length)
+    rerank_model = get_rerank_model(model_name, max_length)
 
     if not raw_docs:
         return []

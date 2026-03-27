@@ -6,15 +6,34 @@ from sentence_transformers import SentenceTransformer
 # collection_name = "china_civil_code"
 # model_name = "Qwen/Qwen3-Embedding-0.6B"
 
-def run_search(query_text,db_path,collection_name,model_name,n_results):
-    print("正在加载embedding模型...")
-    model = SentenceTransformer(
-        model_name,
-        device="cuda",
-        model_kwargs={"torch_dtype": torch.float16}
-    )
+_embedding_model_instance = None
+_chroma_client = None
 
-    client = chromadb.PersistentClient(path=db_path)
+# 优化,解决一次加载常驻内存 无需重复加载
+def get_resources(db_path, model_name):
+    """内部函数：确保数据库客户端和模型只加载一次"""
+    global _embedding_model_instance, _chroma_client
+
+    #  加载数据库客户端
+    if _chroma_client is None:
+        print(f" [首次加载] 正在连接数据库: {db_path}")
+        _chroma_client = chromadb.PersistentClient(path=db_path)
+
+    #  加载 Embedding 模型
+    if _embedding_model_instance is None:
+        print(f" [首次加载] 正在加载 Embedding 模型: {model_name}")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        _embedding_model_instance = SentenceTransformer(
+            model_name,
+            device=device,
+            model_kwargs={"torch_dtype": torch.float16}
+        )
+
+    return _chroma_client, _embedding_model_instance
+
+def run_search(query_text,db_path,collection_name,model_name,n_results):
+    client, model = get_resources(db_path, model_name)
+
     collection = client.get_collection(name=collection_name)
 
 

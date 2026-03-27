@@ -1,5 +1,5 @@
 from data_process import *
-from inject import *
+from injest import *
 
 # 需修改的参数
 docx_name='最高人民法院关于适用《中华人民共和国民法典》侵权责任编的解释（一）_20240925.docx'
