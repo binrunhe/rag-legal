@@ -72,7 +72,7 @@ def run_ingestion(json_path,db_path,collection_name,model_name):
         )
 
         # 存入数据库
-        collection.add(
+        collection.upsert(   # add 修改为 upsert 如果数据相同就覆盖
             embeddings=batch_embeddings.tolist(),
             documents=batch_docs,
             metadatas=metadatas[i:end_idx],

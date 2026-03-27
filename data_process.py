@@ -4,7 +4,7 @@ import json
 import os
 
 # 处理法律原文的  优化过
-def parse_code_perfect(file_path, output_json, English_name):
+def parse_code_perfect(file_path, output_json):
     doc = docx.Document(file_path)
     legal_records = []
 
@@ -87,7 +87,7 @@ def parse_code_perfect(file_path, output_json, English_name):
             content = article_match.group(2).strip()
 
             record = {
-                "id": f"{English_name}_{article_num}",
+                "id": f"{source_name}_{article_num}",
                 "article_number": article_num,
                 "hierarchy": {
                     "book": current_book,
@@ -124,7 +124,7 @@ def parse_code_perfect(file_path, output_json, English_name):
 # parse_code_perfect("法律原文/中华人民共和国刑法_20201226.docx", "code_json/criminal_law_452.json",'Criminal_law')
 
 # 处理司法解释的  相较于法律条文,只需要识别chapter和artical,正则表达式做了改变,其他一样
-def parse_interpretation_perfect(file_path, output_json, English_name):
+def parse_interpretation_perfect(file_path, output_json):
     doc = docx.Document(file_path)
     legal_records = []
 
@@ -150,7 +150,7 @@ def parse_interpretation_perfect(file_path, output_json, English_name):
         if not text:
             continue
 
-        # --- A. 匹配章节标题 ---
+        # 匹配章节标题
         # 匹配到“一、”时，更新章节名，并关闭法条追加开关
         chapter_match = re_chapter.match(text)
         if chapter_match:
@@ -158,7 +158,7 @@ def parse_interpretation_perfect(file_path, output_json, English_name):
             is_inside_article = False
             continue
 
-        # --- B. 匹配“条” ---
+        # 匹配“条”
         article_match = re_article.match(text)
         if article_match:
             article_num = article_match.group(1)
@@ -166,7 +166,7 @@ def parse_interpretation_perfect(file_path, output_json, English_name):
 
             # 创建符合你 metadata 要求的 record
             record = {
-                "id": f"{English_name}_{article_num}",
+                "id": f"{source_name}_{article_num}",
                 "article_number": article_num,
                 "hierarchy": {
                     "book": "",      # 司法解释通常无编

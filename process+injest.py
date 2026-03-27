@@ -23,8 +23,8 @@ model_name = "Qwen/Qwen3-Embedding-0.6B"
 if __name__ == "__main__":
     if '关于' in docx_name or '解释' in docx_name:
         print(f"检测为 司法解释 ，使用对应解析器...")
-        parse_interpretation_perfect(file_path, output_json, English_name)
+        parse_interpretation_perfect(file_path, output_json)
     else:
         print(f"检测为 法律条文 ，使用对应解析器...")
-        parse_code_perfect(file_path, output_json, English_name)
+        parse_code_perfect(file_path, output_json,)
     run_ingestion(json_path,db_path,collection_name,model_name)

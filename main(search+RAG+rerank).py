@@ -14,7 +14,7 @@ rag_model_name='Lusizo/qwen2.5-7b-instruct-1m:latest'
 rerank_model_name='BAAI/bge-reranker-v2-m3'
 max_length=512  # [query,content] 拼接起来塞进模型的最大长度
 top_n=3  # 最后取分数最高的前几
-threshold=-7  # 阈值,低于的认为不想关
+threshold=-7  # 阈值,低于的认为不相关
 
 def main():
     history = [] # 历史记录
