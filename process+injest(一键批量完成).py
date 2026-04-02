@@ -9,7 +9,7 @@ collection_name = "china_law_library"
 model_name = "Qwen/Qwen3-Embedding-0.6B"
 
 def start_batch_work():
-    # 1. 加载注册表
+    # 加载注册表
     if not os.path.exists("registry.json"):
         print(" 错误：找不到 registry.json，请先运行 create_registry.py")
         return
@@ -44,11 +44,11 @@ def start_batch_work():
                 model_name=model_name,
             )
 
-            print(f"✅ {docx_name} 处理并入库成功！")
+            print(f"{docx_name} 处理并入库成功！")
 
         except Exception as e:
-            print(f"❌ 任务 {i+1} 出错: {docx_name}")
-            print(f"   原因: {str(e)}")
+            print(f" 任务 {i+1} 出错: {docx_name}")
+            print(f" 原因: {str(e)}")
             continue
 
     print("\n" + "="*50)

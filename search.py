@@ -23,6 +23,7 @@ def get_resources(db_path, model_name):
     if _embedding_model_instance is None:
         print(f" [首次加载] 正在加载 Embedding 模型: {model_name}")
         device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f'当前使用设备为: {device}')
         _embedding_model_instance = SentenceTransformer(
             model_name,
             device=device,

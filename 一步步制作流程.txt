@@ -15,3 +15,7 @@
 14.现在我们将process_injest推导重来 用一个registry.json(create_registry)来保存文档名,英文名,类别,保存的json文件名之间的关系...以此来批量调用注入函数
 删除English_name,直接用中文名称代替
 16.registry结束,开始批量处理与injest 重写process+injest(一键批量处理)
+17.呜呜呜,显存爆了.采用全ollama管理吧,不动用sentence-transformers了(以后试一试量化,比如TurboQuant)
+18.算了算了,还是只用ollama管理llm吧,把rerank模型削弱一下(半精度),然后控制一下kv缓存,设置ollama回复的温度和上下文大小   主要还是要保证模型都在内存中不爆显存,这样回复快
+后期可以把rerank扔给cpu,然后加大kv缓存,方便咨询再长的案情
+19.

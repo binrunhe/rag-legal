@@ -1,3 +1,4 @@
+import torch
 from sentence_transformers import CrossEncoder
 
 # 解决模型只需加载一次问题
@@ -7,7 +8,12 @@ def get_rerank_model(model_name, max_length):
     global _reranker_instance
     if _reranker_instance is None:
         print(f"[首次加载] 正在初始化 Reranker模型: {model_name}")
-        _reranker_instance = CrossEncoder(model_name, max_length=max_length)
+        _reranker_instance = CrossEncoder(
+            model_name,
+            max_length=max_length,
+            device="cuda", # 确保在显卡上跑
+            model_kwargs={"torch_dtype": torch.float16}  # 半精度,不然爆显存了
+        )
     return _reranker_instance
 
 # 把search找到的results再塞进rerank,找到更相近的

@@ -11,10 +11,10 @@ n_results=10 # search一下子找出多少条数据给rerank
 rag_model_name='Lusizo/qwen2.5-7b-instruct-1m:latest'
 # distance_threshold = 1.05  优化后retrieve后接rerank,不需要这个阈值了
 
-rerank_model_name='BAAI/bge-reranker-v2-m3'
+rerank_model_name=('BAAI/bge-reranker-v2-m3')
 max_length=512  # [query,content] 拼接起来塞进模型的最大长度
 top_n=3  # 最后取分数最高的前几
-threshold=-7  # 阈值,低于的认为不相关
+threshold=-2  # 阈值,低于的认为不相关
 
 def main():
     history = [] # 历史记录
@@ -51,7 +51,7 @@ def main():
 
             if results and results['documents'] and len(results['documents'][0]) > 0:
                 # 使用 zip 优雅地解包
-                raw_docs = [{"content": d, "metadata": m} for d, m in zip(results['documents'][0], results['metadatas'][0])]
+                raw_docs = [{"content": d, "metadata": m} for d, m  in zip(results['documents'][0], results['metadatas'][0])]
 
                 # 喂给重排序函数
                 final_results = rerank_context(search_query, raw_docs, rerank_model_name, max_length, top_n, threshold)
@@ -70,6 +70,9 @@ def main():
 
         # 更新历史
         history.append({"user": user_input, "bot": answer})
+
+        # 清理一下碎片,怕显存炸
+        torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     main()

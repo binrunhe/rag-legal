@@ -37,9 +37,10 @@ def call_ollama_rag(query_text, retrieved_docs,history,model_name):
     for i, item in enumerate(retrieved_docs):
         meta = item['metadata']
         content = item['content']
+        source = meta.get('source', '未知来源')
         levels = [meta.get("book", ""), meta.get("subbook", ""),
                   meta.get("chapter", ""), meta.get("section", "")]
-        path = " > ".join([l for l in levels if l])
+        path = f'{source} >' + " > ".join([l for l in levels if l])
 
         context += f"【{i+1}】来源：{path} > {meta['article_number']}\n原文：{content}\n\n"
 
@@ -62,6 +63,7 @@ def call_ollama_rag(query_text, retrieved_docs,history,model_name):
 4. 必须优先根据法律依据回答。
 5. 引用法条时请注明具体的“条”和“编/章”路径。
 6. 如果法律依据不足以回答问题，请如实告知。
+7.如果给定的原文中没有相关依据，请诚实回答不知道，严禁私自编造法律条文
 """
 
     # 调用 Ollama
@@ -70,7 +72,11 @@ def call_ollama_rag(query_text, retrieved_docs,history,model_name):
     payload = {
         "model": model_name,
         "prompt": prompt,
-        "stream": False
+        "stream": False,
+        "options": {
+            "num_ctx": 4096,  # kv限制，防止 1M 模型吞掉所有显存
+            "temperature": 0.3 # 法律咨询建议设低一点，更严谨
+        }
     }
 
     try:
