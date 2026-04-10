@@ -64,12 +64,20 @@ def run_search(rewrite_text, db_path, collection_name, model_name, n_results):
 
                 is_match = True
                 if law_name_query:
-                    # 【核心修复】：使用和入库相同的截断正则，把“（一）”之类的小尾巴砍掉，确保标准统一
-                    query_core_name = re.split(r'[_\\s\\u3000（(]', law_name_query)[0].strip()
+                    # 依然砍掉“(一)”等后缀
+                    query_core = re.split(r'[_\\s\\u3000（(]', law_name_query)[0].strip()
 
-                    # 必须严格相等！杜绝“民法典”被司法解释名字错误包含的情况
-                    if query_core_name != db_source:
-                        is_match = False
+                    #  允许包含匹配（"刑法" 能命中 "中华人民共和国刑法"）
+                    if query_core in db_source or db_source in query_core:
+                        # 2防御寄生虫：防止 "民法典" 错误命中 "民法典解释"
+                        is_db_interp = "解释" in db_source or "规定" in db_source
+                        is_query_interp = "解释" in query_core or "规定" in query_core
+
+                        # 如果数据库是司法解释，但用户查询没带"解释/规定"，直接拒绝！
+                        if is_db_interp and not is_query_interp:
+                            is_match = False
+                    else:
+                        is_match = False # 完全不包含，直接拒绝
 
                 if is_match:
                     key = f"{db_source}_{m['article_number']}"
