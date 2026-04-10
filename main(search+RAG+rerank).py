@@ -41,12 +41,12 @@ def main():
                 # 直接喂给重排序函数
                 final_results = rerank_context(search_query, raw_docs, rerank_model_name, max_length, top_n, threshold)
 
-                print("\n" + " [透明测试] 最终塞给大模型的弹药库 " )
+                print("\n" + " [透明测试] 最终塞给大模型的法律条文 " )
                 if not final_results:
                     print(" 警告：重排后所有法条均被低分过滤，大模型将仅靠自身记忆回答。")
                 else:
                     for i, doc in enumerate(final_results):
-                        print(f"  弹药 {i+1}: {doc['metadata']['source']} - {doc['metadata']['article_number']}")
+                        print(f"  条文 {i+1}: {doc['metadata']['source']} - {doc['metadata']['article_number']}")
                 print("="*68 + "\n")
 
                 formatted_docs = final_results

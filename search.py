@@ -34,68 +34,70 @@ def get_resources(db_path, model_name):
     return _chroma_client, _embedding_model_instance
 
 
-def run_search(query_text, db_path, collection_name, model_name, n_results):
+def run_search(rewrite_text, db_path, collection_name, model_name, n_results):
     client, model = get_resources(db_path, model_name)
     collection = client.get_collection(name=collection_name)
 
-    print(f"\n 大模型重写指令: {query_text}")
-    print("正在检索法律依据\n")
+    print(f"\n搜索 大模型指令: {rewrite_text}")
 
     final_raw_docs = []
-    seen_keys = set() # 用于去重
+    seen_keys = set()
 
-    # 标签拦截
-    tags = re.findall(r'【(.*?)】', query_text)
+    #  VIP 拦截轨：精准点名
+    # 提取所有标签，如 【刑法-第二百三十三条】
+    tags = re.findall(r'【(.*?)】', rewrite_text)
 
     for tag in tags:
-        parts = tag.split('-')
-        law_name = parts[0] if len(parts) > 1 and parts[0] != "未知" else None
-        article_num = parts[-1]
+        if '-' not in tag: continue
 
-        # 构造过滤条件
-        where_cond = {"article_number": article_num}
-        print(f" [精准拦截触发] 尝试直接提取数据库：{tag}")
-        res = collection.get(where=where_cond)
+        parts = tag.split('-')
+        # 【关键修复】：加上 .strip() 去除可能存在的首尾空格
+        law_name_query = parts[0].strip() if parts[0] != "未知" else None
+        article_num = parts[-1].strip()
+
+        # 数据库查询：只按编号搜（编号是唯一的，这样最稳）
+        res = collection.get(where={"article_number": article_num})
 
         if res['documents']:
             for d, m in zip(res['documents'], res['metadatas']):
-                # Python 级别比对：如果标签里有法律名，判断它是否在数据库的 source 里
-                if law_name and law_name not in m.get('source', ''):
-                    continue # 名字对不上，跳过！
+                db_source = m.get('source', '')
 
-                key = f"{m['source']}_{m['article_number']}"
-                if key not in seen_keys:
-                    #  新增 "method": 怎么找来的
-                    final_raw_docs.append({"content": d, "metadata": m, "method": "精准点名"})
-                    seen_keys.add(key)
-                    print(f"[精准命中]：{m['source']} {m['article_number']}")
-                    print(f"内容预览: {d[:60]}...")
+                is_match = True
+                if law_name_query:
+                    # 【核心修复】：使用和入库相同的截断正则，把“（一）”之类的小尾巴砍掉，确保标准统一
+                    query_core_name = re.split(r'[_\\s\\u3000（(]', law_name_query)[0].strip()
 
-        else:
-            print(f"数据库中未找到确切对应的法条：{tag}")
+                    # 必须严格相等！杜绝“民法典”被司法解释名字错误包含的情况
+                    if query_core_name != db_source:
+                        is_match = False
 
-    # 纯向量检索
-    pure_semantic_query = re.sub(r'【.*?】', '', query_text).strip()
+                if is_match:
+                    key = f"{db_source}_{m['article_number']}"
+                    if key not in seen_keys:
+                        final_raw_docs.append({"content": d, "metadata": m, "method": "精准点名"})
+                        seen_keys.add(key)
+                        print(f" 精准命中：{db_source} {m['article_number']}")
+                        print(f" 内容预览: {d[:60]}...")
 
-    if pure_semantic_query:
-        print(f" [向量检索启动] 语义关键词: {pure_semantic_query}")
-        query_embedding = model.encode([pure_semantic_query], prompt_name="query", convert_to_numpy=True).tolist()
-        vector_results = collection.query(query_embeddings=query_embedding, n_results=n_results)
+                        #  向量语义轨：海选补位
+    # 把 【】 标签去掉，剩下纯语义去搜向量
+    pure_query = re.sub(r'【.*?】', '', rewrite_text).strip()
+    if pure_query:
+        print(f"🔍 [语义检索] 关键词: {pure_query}")
+        query_embedding = model.encode([pure_query], prompt_name="query", convert_to_numpy=True).tolist()
+        vector_res = collection.query(query_embeddings=query_embedding, n_results=n_results)
 
-        for i in range(len(vector_results['documents'][0])):
-            d = vector_results['documents'][0][i]
-            m = vector_results['metadatas'][0][i]
+        for i in range(len(vector_res['documents'][0])):
+            d, m = vector_res['documents'][0][i], vector_res['metadatas'][0][i]
             key = f"{m['source']}_{m['article_number']}"
-
             if key not in seen_keys:
-                #  新增 "method": "向量召回"
                 final_raw_docs.append({"content": d, "metadata": m, "method": "向量召回"})
                 seen_keys.add(key)
 
-    # 简单打印一下收集到的总数
-    print(f"\n 检索完毕，共收集到 {len(final_raw_docs)} 条候选法条进入重排阶段。")
-    print("-" * 60)
+    else:
+        print(" [跳过向量搜索] 意图重写仅包含精准标签，无需执行模糊语义检索。")
 
+    print(f"搜索完毕：共抓取 {len(final_raw_docs)} 条法条进入重排。")
     return final_raw_docs
 
 """ 

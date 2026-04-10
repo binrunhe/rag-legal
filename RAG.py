@@ -1,25 +1,53 @@
 import requests
+import json
+import os
+
+# --- 新增：读取本地已有法律清单的函数 ---
+def get_available_laws():
+    """从 registry.json 中提取所有已入库的法律和解释名称"""
+    try:
+        if not os.path.exists("registry.json"):
+            return "暂无清单，请按常识推断。"
+
+        with open("registry.json", "r", encoding="utf-8") as f:
+            tasks = json.load(f)
+
+        # 提取文件名并去掉 .docx 后缀
+        law_names = [task['docx_name'].replace('.docx', '') for task in tasks]
+
+        # 拼接成带序号的文本
+        return "\n".join([f"- {name}" for name in law_names])
+    except Exception as e:
+        print(f"读取清单失败: {e}")
+        return "暂无清单，请按常识推断。"
 
 def rewrite_query(user_query, history, model_name):
     print("\n正在分析用户意图并重写查询...")
+
     if not history:
         history_str = "无"
     else:
         history_str = "\n".join([f"用户: {h['user']}\n助手: {h['bot']}" for h in history[-2:]])
 
-    # --- 核心改动：强化 Prompt 的结构化输出能力 ---
+    # 动态获取菜单
+    available_laws_list = get_available_laws()
+
+    # --- 核心改动：把清单加入 Prompt，并强约束它的输出 ---
     prompt = f"""你是一个专业的法律咨询意图解析器。请结合【对话历史】，将用户的【最新提问】改写为一个独立的搜索语句。
 
     【核心任务要求】：
-    1. 提取法条标签：如果用户在提问中提到了具体的法律名称和条文编号（如“民法典第一千多条”、“刑法第232条”），请务必在输出最前面用标签标出，格式严格为：【法律名-第xxx条】。
-       - 注意：数字必须转换为中文大写（如：1064 转为 第一千零六十四）。
-       - 如果用户没说哪部法律，只说了条数，格式为：【未知-第xxx条】。
-    2. 语义重写：在标签之后，去除口语化废话，提炼出专业的法律搜索关键词。
-    3. 特殊意图：如果是闲聊或询问记忆，重写为“请总结并确认之前的咨询内容”。
+    1. 提取法条标签：如果用户提到了具体的法律名称和条文编号，请务必在输出最前面用标签标出，格式为：【法律名-第xxx条】。
+       - ⚠️警告：必须严格提取用户提问中的条文数字，绝对不许自己瞎编数字！如果用户说“第一条”，就写“第一条”。
+       - 注意：数字必须转换为中文大写。
+    
+    2. 严格遵循可用清单（禁止瞎编）：
+       如果用户提到了法律、规定或司法解释的简称（如“侵权解释”、“婚姻法解释”），你【必须】从下方的【本地可用法律清单】中，找出最匹配的全称填入标签。
+       绝不允许自己编造清单中没有的法律名字！如果清单里没有对应的，就填【未知】。
+       
+    3. 语义重写：在标签之后，去除口语化废话，提炼出专业的法律搜索关键词。
 
-    【示例】：
-    输入：我记得民法典一千多条讲过两口子欠钱那个。
-    输出：【中华人民共和国民法典-第一千零六十四条】 夫妻共同债务的认定与承担
+    【本地可用法律清单】：
+    {available_laws_list}
 
     【对话历史】：
     {history_str}
@@ -31,10 +59,10 @@ def rewrite_query(user_query, history, model_name):
 
     payload = {"model": model_name, "prompt": prompt, "stream": False}
     try:
-        import requests
         response = requests.post("http://localhost:11434/api/generate", json=payload)
         return response.json().get("response", user_query).strip()
-    except:
+    except Exception as e:
+        print(f"大模型请求失败: {e}")
         return user_query
 
 def call_ollama_rag(query_text, retrieved_docs,history,model_name):
