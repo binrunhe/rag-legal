@@ -1,0 +1,337 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans, sans-serif); background: transparent; }
+
+.legend {
+  display: flex; gap: 20px; align-items: center;
+  padding: 10px 16px; margin-bottom: 8px;
+  font-size: 12px; color: var(--color-text-secondary);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.done { background: #1D9E75; }
+.plan { background: #888780; border: 1.5px dashed #5F5E5A; }
+
+svg text { font-family: var(--font-sans, sans-serif); }
+.node-group { cursor: pointer; }
+.node-group:hover rect, .node-group:hover ellipse { opacity: 0.85; }
+
+@media (prefers-color-scheme: dark) {
+  .done { background: #5DCAA5; }
+  .plan { background: #444441; border-color: #888780; }
+}
+</style>
+</head>
+<body>
+
+<div class="legend">
+  <span style="font-weight:500;color:var(--color-text-primary);font-size:12px;">图例</span>
+  <div class="legend-item"><div class="dot done"></div><span>已完成</span></div>
+  <div class="legend-item"><div class="dot plan"></div><span>未来规划</span></div>
+</div>
+
+<svg width="100%" viewBox="0 0 680 1680" role="img">
+<title>法律大模型RAG系统架构流程图</title>
+<desc>三个阶段的法律RAG系统：离线数据管道、在线检索推理、答案生成与反馈</desc>
+<defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arr-dashed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<!-- ===== PHASE 1 HEADER ===== -->
+<rect x="20" y="16" width="640" height="36" rx="8" fill="#085041" opacity="0.15"/>
+<rect x="20" y="16" width="640" height="36" rx="8" fill="none" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="340" y="39" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#085041">
+  阶段一：离线数据与知识库构建 (Offline Pipeline)
+</text>
+<!-- dark mode override for phase header text -->
+<style>
+@media (prefers-color-scheme: dark) {
+  #ph1t { fill: #9FE1CB !important; }
+  #ph1bg { fill: #04342C !important; }
+  #ph2t { fill: #B5D4F4 !important; }
+  #ph2bg { fill: #042C53 !important; }
+  #ph3t { fill: #FAC775 !important; }
+  #ph3bg { fill: #412402 !important; }
+  .done-node rect, .done-node ellipse { fill: #085041 !important; stroke: #5DCAA5 !important; }
+  .done-node text { fill: #9FE1CB !important; }
+  .done-sub { fill: #5DCAA5 !important; }
+  .plan-node rect, .plan-node ellipse { fill: #2C2C2A !important; stroke: #888780 !important; }
+  .plan-node text { fill: #B4B2A9 !important; }
+  .plan-sub { fill: #888780 !important; }
+  .io-node rect { fill: #26215C !important; stroke: #7F77DD !important; }
+  .io-node text { fill: #CECBF6 !important; }
+  .phase-box { stroke: #888780 !important; }
+}
+</style>
+
+<!-- ===== INPUT NODE ===== -->
+<g class="node-group io-node" onclick="sendPrompt('法律原文和司法解释文档如何处理？')">
+  <rect x="220" y="68" width="240" height="44" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+  <text x="340" y="84" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#3C3489">数据源输入</text>
+  <text x="340" y="99" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#7F77DD">《法律原典》+ 《司法解释》Word文档</text>
+</g>
+
+<!-- Arrow down -->
+<line x1="340" y1="112" x2="340" y2="140" stroke="#1D9E75" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Step 1: create_registry -->
+<g class="node-group done-node" onclick="sendPrompt('registry.json清单的作用是什么？')">
+  <rect x="190" y="142" width="300" height="52" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="340" y="160" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#085041">生成法律清单</text>
+  <text x="340" y="178" text-anchor="middle" dominant-baseline="central" font-size="11" class="done-sub" fill="#0F6E56">create_registry.py → registry.json（防幻觉锚点）</text>
+</g>
+
+<!-- Future branch: 裁判文书 -->
+<line x1="340" y1="142" x2="560" y2="118" stroke="#888780" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arr-dashed)"/>
+<g class="node-group plan-node" onclick="sendPrompt('裁判文书IRAC结构化解析如何实现？')">
+  <rect x="476" y="90" width="184" height="44" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="568" y="107" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#5F5E5A">裁判文书解析</text>
+  <text x="568" y="123" text-anchor="middle" dominant-baseline="central" font-size="10" class="plan-sub" fill="#888780">IRAC框架结构化入库</text>
+</g>
+
+<line x1="340" y1="194" x2="340" y2="224" stroke="#1D9E75" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Step 2: Hierarchical Parsing -->
+<g class="node-group done-node" onclick="sendPrompt('分层解析算法的核心逻辑是什么？')">
+  <rect x="170" y="226" width="340" height="52" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="340" y="244" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#085041">智能文档分层解析</text>
+  <text x="340" y="262" text-anchor="middle" dominant-baseline="central" font-size="11" class="done-sub" fill="#0F6E56">data_process.py · 编/章/条 + 段落追加算法（Append Switch）</text>
+</g>
+
+<!-- Future branch: 时效标签 -->
+<line x1="340" y1="226" x2="116" y2="246" stroke="#888780" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arr-dashed)"/>
+<g class="node-group plan-node" onclick="sendPrompt('法律时效与效力层级如何管理？')">
+  <rect x="20" y="218" width="160" height="44" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="100" y="235" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#5F5E5A">时效与效力管理</text>
+  <text x="100" y="251" text-anchor="middle" dominant-baseline="central" font-size="10" class="plan-sub" fill="#888780">施行/废止时间 · 效力位阶</text>
+</g>
+
+<line x1="340" y1="278" x2="340" y2="308" stroke="#1D9E75" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Step 3: Vectorization -->
+<g class="node-group done-node" onclick="sendPrompt('Qwen Embedding向量化的原理是什么？')">
+  <rect x="180" y="310" width="320" height="52" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="340" y="328" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#085041">密集向量化 + 元数据绑定</text>
+  <text x="340" y="346" text-anchor="middle" dominant-baseline="central" font-size="11" class="done-sub" fill="#0F6E56">injest.py · Qwen 0.6B Embedding · 来源/条号/层级</text>
+</g>
+
+<line x1="340" y1="362" x2="340" y2="392" stroke="#1D9E75" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- ChromaDB -->
+<g class="node-group io-node" onclick="sendPrompt('ChromaDB向量数据库存储什么？')">
+  <rect x="210" y="394" width="260" height="44" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+  <text x="340" y="411" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#3C3489">ChromaDB 向量数据库</text>
+  <text x="340" y="427" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#7F77DD">向量 + 元数据持久化存储</text>
+</g>
+
+<!-- Future: GraphRAG -->
+<line x1="340" y1="394" x2="564" y2="394" stroke="#888780" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arr-dashed)"/>
+<g class="node-group plan-node" onclick="sendPrompt('法律知识图谱GraphRAG怎么构建？')">
+  <rect x="476" y="370" width="184" height="48" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="568" y="388" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#5F5E5A">知识图谱 GraphRAG</text>
+  <text x="568" y="404" text-anchor="middle" dominant-baseline="central" font-size="10" class="plan-sub" fill="#888780">Neo4j · 法条关系网络</text>
+</g>
+
+<!-- Phase separator -->
+<line x1="20" y1="462" x2="660" y2="462" stroke="var(--color-border-tertiary)" stroke-width="0.5" stroke-dasharray="6 4"/>
+
+<!-- ===== PHASE 2 HEADER ===== -->
+<rect x="20" y="472" width="640" height="36" rx="8" fill="#042C53" opacity="0.12"/>
+<rect x="20" y="472" width="640" height="36" rx="8" fill="none" stroke="#185FA5" stroke-width="0.5"/>
+<text x="340" y="495" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#0C447C">
+  阶段二：在线检索与推理引擎 (Online Retrieval &amp; Reasoning)
+</text>
+
+<!-- User Input -->
+<g class="node-group io-node" onclick="sendPrompt('用户如何与系统交互？')">
+  <rect x="220" y="524" width="240" height="44" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+  <text x="340" y="541" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#3C3489">用户输入法律问题</text>
+  <text x="340" y="557" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#7F77DD">终端 / 界面（口语化提问）</text>
+</g>
+
+<!-- Upload branch future -->
+<line x1="220" y1="546" x2="116" y2="546" stroke="#888780" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arr-dashed)"/>
+<g class="node-group plan-node" onclick="sendPrompt('长文档合同审查功能如何工作？')">
+  <rect x="20" y="522" width="160" height="48" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="100" y="539" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#5F5E5A">合同文档上传</text>
+  <text x="100" y="555" text-anchor="middle" dominant-baseline="central" font-size="10" class="plan-sub" fill="#888780">智能审查 · 风险提示</text>
+</g>
+
+<line x1="340" y1="568" x2="340" y2="598" stroke="#185FA5" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Future: Router -->
+<g class="node-group plan-node" onclick="sendPrompt('智能路由如何分发任务？')">
+  <rect x="200" y="600" width="280" height="48" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="340" y="618" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#5F5E5A">智能路由与意图分发</text>
+  <text x="340" y="634" text-anchor="middle" dominant-baseline="central" font-size="11" class="plan-sub" fill="#888780">实体法 / 程序法 / 案例 / 闲聊 分流</text>
+</g>
+
+<line x1="340" y1="648" x2="340" y2="678" stroke="#185FA5" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Query Rewriting -->
+<g class="node-group done-node" onclick="sendPrompt('意图重写和标准化查询标签是如何工作的？')">
+  <rect x="170" y="680" width="340" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="340" y="698" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#085041">LLM 意图识别 + 查询标准化重写</text>
+  <text x="340" y="715" text-anchor="middle" dominant-baseline="central" font-size="11" class="done-sub" fill="#0F6E56">RAG.py · 加载registry.json · 【法律名-第X条】+ 语义关键词</text>
+</g>
+
+<!-- Multi-hop branch -->
+<line x1="340" y1="680" x2="564" y2="680" stroke="#888780" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arr-dashed)"/>
+<g class="node-group plan-node" onclick="sendPrompt('复杂案情多跳推理是如何实现的？')">
+  <rect x="476" y="656" width="184" height="48" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="568" y="673" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#5F5E5A">多跳推理循环</text>
+  <text x="568" y="689" text-anchor="middle" dominant-baseline="central" font-size="10" class="plan-sub" fill="#888780">自主多轮检索 · 逻辑拼图</text>
+</g>
+
+<line x1="340" y1="736" x2="340" y2="766" stroke="#185FA5" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Dual Track Container -->
+<rect x="30" y="768" width="620" height="148" rx="10" fill="none" stroke="#185FA5" stroke-width="0.5" opacity="0.4" class="phase-box"/>
+<text x="340" y="784" text-anchor="middle" font-size="11" fill="#185FA5" opacity="0.7">双轨混合检索 (search.py)</text>
+
+<!-- Track A -->
+<g class="node-group done-node" onclick="sendPrompt('VIP精准点名轨的身份对等校验锁如何工作？')">
+  <rect x="48" y="794" width="276" height="112" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="186" y="818" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#085041">轨道 A：VIP 精准点名轨</text>
+  <text x="186" y="836" text-anchor="middle" dominant-baseline="central" font-size="10" class="done-sub" fill="#0F6E56">提取条号 → 元数据硬匹配</text>
+  <rect x="68" y="848" width="236" height="28" rx="5" fill="#0F6E56" opacity="0.12"/>
+  <text x="186" y="865" text-anchor="middle" dominant-baseline="central" font-size="10" fill="#085041">身份对等校验锁</text>
+  <text x="186" y="879" text-anchor="middle" dominant-baseline="central" font-size="9" class="done-sub" fill="#0F6E56">阻断法典与解释的寄生误触</text>
+  <text x="186" y="897" text-anchor="middle" dominant-baseline="central" font-size="9" fill="#1D9E75">→ ChromaDB 绝对匹配</text>
+</g>
+
+<!-- Track B -->
+<g class="node-group done-node" onclick="sendPrompt('语义向量海选轨如何进行模糊召回？')">
+  <rect x="356" y="794" width="276" height="112" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="494" y="818" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#085041">轨道 B：语义向量海选轨</text>
+  <text x="494" y="836" text-anchor="middle" dominant-baseline="central" font-size="10" class="done-sub" fill="#0F6E56">剥离标签 → 纯语义关键词</text>
+  <rect x="376" y="848" width="236" height="28" rx="5" fill="#0F6E56" opacity="0.12"/>
+  <text x="494" y="865" text-anchor="middle" dominant-baseline="central" font-size="10" fill="#085041">Cos 相似度模糊向量召回</text>
+  <text x="494" y="879" text-anchor="middle" dominant-baseline="central" font-size="9" class="done-sub" fill="#0F6E56">无明确条号时的兜底保障</text>
+  <text x="494" y="897" text-anchor="middle" dominant-baseline="central" font-size="9" fill="#1D9E75">→ ChromaDB 向量检索</text>
+</g>
+
+<!-- Arrows from tracks to merge -->
+<line x1="186" y1="906" x2="186" y2="952" stroke="#1D9E75" stroke-width="1"/>
+<line x1="494" y1="906" x2="494" y2="952" stroke="#1D9E75" stroke-width="1"/>
+<line x1="186" y1="952" x2="494" y2="952" stroke="#1D9E75" stroke-width="1"/>
+<line x1="340" y1="952" x2="340" y2="978" stroke="#1D9E75" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Merge -->
+<g class="node-group done-node" onclick="sendPrompt('两条轨道的结果如何合并？')">
+  <rect x="200" y="980" width="280" height="44" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="340" y="997" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#085041">合并候选集（Raw Docs）</text>
+  <text x="340" y="1013" text-anchor="middle" dominant-baseline="central" font-size="11" class="done-sub" fill="#0F6E56">轨道A + 轨道B 结果去重合并</text>
+</g>
+
+<line x1="340" y1="1024" x2="340" y2="1054" stroke="#185FA5" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Reranking -->
+<g class="node-group done-node" onclick="sendPrompt('交叉编码器重排和保送机制如何保证精准法条不丢失？')">
+  <rect x="160" y="1056" width="360" height="60" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="340" y="1074" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#085041">交叉编码器重排（rerank.py）</text>
+  <text x="340" y="1092" text-anchor="middle" dominant-baseline="central" font-size="11" class="done-sub" fill="#0F6E56">BGE-M3 · 动态 top_n 保送 · 精准命中者强制 999 分优先</text>
+</g>
+
+<!-- Phase separator -->
+<line x1="20" y1="1138" x2="660" y2="1138" stroke="var(--color-border-tertiary)" stroke-width="0.5" stroke-dasharray="6 4"/>
+
+<!-- ===== PHASE 3 HEADER ===== -->
+<rect x="20" y="1148" width="640" height="36" rx="8" fill="#412402" opacity="0.12"/>
+<rect x="20" y="1148" width="640" height="36" rx="8" fill="none" stroke="#BA7517" stroke-width="0.5"/>
+<text x="340" y="1171" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#633806">
+  阶段三：答案生成与闭环反馈 (Generation &amp; Evaluation Loop)
+</text>
+
+<line x1="340" y1="1116" x2="340" y2="1204" stroke="#BA7517" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Context Assembly -->
+<g class="node-group done-node" onclick="sendPrompt('Prompt模板是如何防止幻觉的？')">
+  <rect x="160" y="1206" width="360" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="340" y="1224" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#085041">上下文组装（main.py）</text>
+  <text x="340" y="1242" text-anchor="middle" dominant-baseline="central" font-size="11" class="done-sub" fill="#0F6E56">历史对话 + Top-K法条 + 原始提问 → 防幻觉Prompt模板</text>
+</g>
+
+<!-- vLLM branch -->
+<line x1="340" y1="1206" x2="116" y2="1222" stroke="#888780" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arr-dashed)"/>
+<g class="node-group plan-node" onclick="sendPrompt('vLLM推理加速和上下文显存管理如何优化？')">
+  <rect x="20" y="1198" width="160" height="48" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="100" y="1215" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#5F5E5A">推理加速优化</text>
+  <text x="100" y="1231" text-anchor="middle" dominant-baseline="central" font-size="10" class="plan-sub" fill="#888780">vLLM · AWQ量化 · 滑动窗口</text>
+</g>
+
+<line x1="340" y1="1262" x2="340" y2="1292" stroke="#BA7517" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- LLM Generation -->
+<g class="node-group done-node" onclick="sendPrompt('本地大模型如何生成带引用的法律解答？')">
+  <rect x="180" y="1294" width="320" height="52" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="340" y="1312" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#085041">本地大模型生成（离线）</text>
+  <text x="340" y="1330" text-anchor="middle" dominant-baseline="central" font-size="11" class="done-sub" fill="#0F6E56">Qwen 7B Instruct · 带条文引用的专业解答</text>
+</g>
+
+<!-- Legal Drafting branch -->
+<line x1="500" y1="1320" x2="564" y2="1320" stroke="#888780" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arr-dashed)"/>
+<g class="node-group plan-node" onclick="sendPrompt('法律文书一键生成功能怎么实现？')">
+  <rect x="476" y="1296" width="184" height="48" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="568" y="1313" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#5F5E5A">法律文书生成</text>
+  <text x="568" y="1329" text-anchor="middle" dominant-baseline="central" font-size="10" class="plan-sub" fill="#888780">起诉状 / 答辩状 / 律师函</text>
+</g>
+
+<line x1="340" y1="1346" x2="340" y2="1376" stroke="#BA7517" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Critic / Self-correction -->
+<g class="node-group plan-node" onclick="sendPrompt('Critic模型的幻觉纠偏机制如何运作？')">
+  <rect x="190" y="1378" width="300" height="52" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="340" y="1396" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#5F5E5A">内部审查（Critic LLM）</text>
+  <text x="340" y="1414" text-anchor="middle" dominant-baseline="central" font-size="11" class="plan-sub" fill="#888780">核对法条真实性 · 不合格退回重答</text>
+</g>
+
+<!-- Retry arrow (back to generation) -->
+<path d="M190 1404 L140 1404 L140 1320 L180 1320" fill="none" stroke="#888780" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arr-dashed)"/>
+<text x="126" y="1365" text-anchor="middle" font-size="9" fill="#888780" transform="rotate(-90,126,1365)">重答</text>
+
+<line x1="340" y1="1430" x2="340" y2="1460" stroke="#BA7517" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Final Output -->
+<g class="node-group io-node" onclick="sendPrompt('最终输出给用户的是什么格式？')">
+  <rect x="210" y="1462" width="260" height="44" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+  <text x="340" y="1479" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="500" fill="#3C3489">最终输出展示给用户</text>
+  <text x="340" y="1495" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#7F77DD">带引用来源的专业法律解答</text>
+</g>
+
+<!-- Feedback loop -->
+<line x1="340" y1="1506" x2="340" y2="1536" stroke="#BA7517" stroke-width="1" marker-end="url(#arr)"/>
+
+<!-- Evaluation + HITL row -->
+<g class="node-group plan-node" onclick="sendPrompt('RAGAS评估框架如何量化检索质量？')">
+  <rect x="34" y="1538" width="272" height="52" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="170" y="1556" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#5F5E5A">RAGAS 量化评估</text>
+  <text x="170" y="1574" text-anchor="middle" dominant-baseline="central" font-size="10" class="plan-sub" fill="#888780">精度 · 忠实度 · 回答相关性</text>
+</g>
+
+<g class="node-group plan-node" onclick="sendPrompt('人类反馈数据飞轮如何微调Rerank模型？')">
+  <rect x="374" y="1538" width="272" height="52" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text x="510" y="1556" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="500" fill="#5F5E5A">人类反馈数据飞轮 (HITL)</text>
+  <text x="510" y="1574" text-anchor="middle" dominant-baseline="central" font-size="10" class="plan-sub" fill="#888780">点赞/踩 → 微调 BGE Rerank 模型</text>
+</g>
+
+<line x1="170" y1="1538" x2="170" y2="1532" stroke="#888780" stroke-width="0.8"/>
+<line x1="510" y1="1538" x2="510" y2="1532" stroke="#888780" stroke-width="0.8"/>
+<line x1="170" y1="1532" x2="510" y2="1532" stroke="#888780" stroke-width="0.8"/>
+
+<!-- Feedback back arrow to Reranker -->
+<path d="M510 1590 L648 1590 L648 1068 L520 1068" fill="none" stroke="#888780" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arr-dashed)"/>
+<text x="656" y="1335" text-anchor="middle" font-size="9" fill="#888780" transform="rotate(90,656,1335)">微调反馈</text>
+
+</svg>
+</body>
+</html>
