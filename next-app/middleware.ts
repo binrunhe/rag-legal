@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'experimental-edge';
 
 import { type NextRequest, NextResponse } from "next/server";
 
