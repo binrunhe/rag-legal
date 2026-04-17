@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { type NextRequest, NextResponse } from "next/server";
 
 // Frontend-only mode: disable auth/database middleware behaviors.
