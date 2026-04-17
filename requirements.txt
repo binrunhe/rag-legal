@@ -3,3 +3,6 @@ sentence-transformers
 chromadb
 requests
 python-docx
+fastapi
+pydantic
+uvicorn

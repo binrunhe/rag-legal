@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>法律智能体 · 完整业务逻辑流程图</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0d12;font-family:'Noto Sans SC',sans-serif;color:#dde2f0;min-width:900px}
+
+/* HEADER */
+.hdr{padding:24px 40px 18px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:100;background:#0b0d12}
+.hdr h1{font-size:17px;font-weight:700;color:#f0f4ff;letter-spacing:.03em}
+.hdr p{font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.25);margin-top:3px;letter-spacing:.08em}
+.legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.li{display:flex;align-items:center;gap:7px;font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.38)}
+.lb{width:26px;height:12px;border-radius:2px;flex-shrink:0}
+.lb-done{background:#041510;border:1.5px solid #1a7a50}
+.lb-plan{background:#0e0a18;border:1.5px dashed #5a3a8a}
+.lb-io{background:#070f1a;border:1.5px solid #1a5fa0}
+.lb-dec{width:12px;height:12px;background:#130f06;border:1.5px solid #8a6010;transform:rotate(45deg)}
+
+/* MAIN LAYOUT: 4 columns */
+.wrap{display:flex;gap:0;min-height:calc(100vh - 80px)}
+
+/* Phase sidebar labels */
+.phase-bar{width:32px;flex-shrink:0;display:flex;flex-direction:column}
+.pb{display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);font-size:9px;font-family:'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;border-right:2px solid;padding:12px 4px;flex:1}
+.pb1{color:rgba(0,200,100,.4);border-color:rgba(0,200,100,.2);background:rgba(0,200,100,.02)}
+.pb2{color:rgba(60,140,255,.4);border-color:rgba(60,140,255,.2);background:rgba(60,140,255,.02)}
+.pb3{color:rgba(200,80,200,.4);border-color:rgba(200,80,200,.2);background:rgba(200,80,200,.02)}
+.pb4{color:rgba(255,140,60,.4);border-color:rgba(255,140,60,.2);background:rgba(255,140,60,.02)}
+
+/* Main flow */
+.main{flex:1;padding:24px 32px 60px;display:flex;flex-direction:column;align-items:center;gap:0}
+
+/* Section headers */
+.sec{width:100%;max-width:820px;display:flex;align-items:center;gap:10px;margin-bottom:16px;margin-top:8px}
+.sec-line{flex:1;height:1px;background:rgba(255,255,255,.07)}
+.sec-label{font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.12em;padding:3px 10px;border-radius:2px;white-space:nowrap}
+.sl1{color:rgba(0,200,100,.6);border:1px solid rgba(0,200,100,.2);background:rgba(0,200,100,.04)}
+.sl2{color:rgba(60,150,255,.6);border:1px solid rgba(60,150,255,.2);background:rgba(60,150,255,.04)}
+.sl3{color:rgba(200,80,220,.6);border:1px solid rgba(200,80,220,.2);background:rgba(200,80,220,.04)}
+.sl4{color:rgba(255,140,60,.6);border:1px solid rgba(255,140,60,.2);background:rgba(255,140,60,.04)}
+
+/* NODE CARDS */
+.n{border-radius:5px;padding:10px 14px;width:100%;position:relative}
+.nd{background:#041510;border:1px solid #1a7a50;box-shadow:0 0 10px rgba(26,122,80,.12)}
+.np{background:#0e0a18;border:1px dashed #5a3a8a}
+.ni{background:#070f1a;border:1px solid #1a5fa0}
+.no{background:#120804;border:1px solid #8a4818}
+.nm{background:#12100a;border:1px solid #6a5010}
+
+.nt{font-size:12px;font-weight:500;line-height:1.45;margin-bottom:3px}
+.nd .nt{color:#80eab8}
+.np .nt{color:#c0a0f8}
+.ni .nt{color:#70c0ff}
+.no .nt{color:#ffaa60}
+.nm .nt{color:#e0c060}
+
+.ns{font-size:9px;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.28);margin-bottom:4px;letter-spacing:.05em}
+.nd2{font-size:9px;color:rgba(255,255,255,.3);line-height:1.5;margin-top:3px}
+.nd .nd2{color:rgba(100,220,160,.45)}
+.np .nd2{color:rgba(160,110,250,.45)}
+.ni .nd2{color:rgba(80,170,255,.45)}
+
+.badge{display:inline-block;font-size:8px;font-family:'JetBrains Mono',monospace;padding:1px 5px;border-radius:2px;margin-top:4px;font-weight:500}
+.bd{background:rgba(0,200,100,.1);color:#00d870;border:.5px solid rgba(0,200,100,.28)}
+.bp{background:rgba(130,80,220,.1);color:#a870ff;border:.5px dashed rgba(130,80,220,.32)}
+.bm{background:rgba(200,160,20,.1);color:#d4a820;border:.5px solid rgba(200,160,20,.28)}
+
+/* ARROWS */
+.a{width:1px;height:14px;margin:0 auto;position:relative;flex-shrink:0}
+.a::after{content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);border-left:4px solid transparent;border-right:4px solid transparent}
+.ag{background:rgba(0,200,100,.25)} .ag::after{border-top:5px solid rgba(0,200,100,.5)}
+.ab{background:rgba(40,130,255,.25)} .ab::after{border-top:5px solid rgba(40,130,255,.5)}
+.ap{background:rgba(180,80,220,.25)} .ap::after{border-top:5px solid rgba(180,80,220,.5)}
+.ao{background:rgba(255,130,40,.25)} .ao::after{border-top:5px solid rgba(255,130,40,.5)}
+.aw{background:rgba(255,255,255,.12)} .aw::after{border-top:5px solid rgba(255,255,255,.25)}
+.al{height:20px}
+
+/* DIAMOND decision */
+.dm{display:flex;flex-direction:column;align-items:center;width:100%;margin:0}
+.d{width:140px;height:140px;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin:0 auto}
+.di{width:94px;height:94px;transform:rotate(45deg);border-radius:3px;background:#12100a;border:1.5px solid #8a6010;box-shadow:0 0 14px rgba(138,96,16,.18)}
+.dt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px}
+.dt span{font-size:10px;font-weight:500;color:#e0c060;line-height:1.45}
+.dt small{font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(220,180,60,.4);margin-top:3px}
+.d-sm .di{width:76px;height:76px}
+.d-sm{width:110px;height:110px}
+.d-sm .dt span{font-size:9px}
+
+/* Branch rows */
+.br{display:flex;gap:10px;width:100%;max-width:820px;align-items:flex-start}
+.bc{flex:1;display:flex;flex-direction:column;align-items:center;gap:0;padding:0 4px}
+.bl{font-size:9px;font-family:'JetBrains Mono',monospace;text-align:center;letter-spacing:.06em;margin-bottom:5px;padding:2px 8px;border-radius:2px}
+.bly{color:rgba(0,220,100,.7);background:rgba(0,220,100,.08);border:.5px solid rgba(0,220,100,.2)}
+.bln{color:rgba(255,80,60,.6);background:rgba(255,80,60,.06);border:.5px solid rgba(255,80,60,.18)}
+.blp{color:rgba(180,100,255,.7);background:rgba(180,100,255,.08);border:.5px solid rgba(180,100,255,.2)}
+.blb{color:rgba(60,150,255,.7);background:rgba(60,150,255,.08);border:.5px solid rgba(60,150,255,.2)}
+.blo{color:rgba(255,140,60,.7);background:rgba(255,140,60,.08);border:.5px solid rgba(255,140,60,.18)}
+
+/* Merge point */
+.mg{width:20px;height:20px;border:1px solid rgba(255,255,255,.18);border-radius:50%;background:#0b0d12;display:flex;align-items:center;justify-content:center;margin:0 auto;flex-shrink:0}
+.mg span{font-size:10px;color:rgba(255,255,255,.35)}
+.mglbl{font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.2);text-align:center;margin:2px 0 4px;letter-spacing:.05em}
+
+/* Full-width container */
+.fw{width:100%;max-width:820px}
+
+/* Horizontal divider */
+.divider{width:100%;max-width:820px;height:1px;background:rgba(255,255,255,.05);margin:20px 0}
+
+/* Retry annotation */
+.retry{font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(255,80,60,.4);text-align:center;margin:3px 0;letter-spacing:.05em}
+.loop{font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(255,140,60,.35);text-align:center;margin:3px 0 0;letter-spacing:.05em}
+
+/* flywheel row */
+.fw-row{display:flex;gap:8px;width:100%;max-width:820px}
+.fw-item{flex:1;border-radius:5px;padding:9px 12px;background:#0e0a18;border:1px dashed #5a3a8a}
+.fw-item .nt{font-size:10px;color:#b090f0}
+.fw-item .ns{font-size:8px}
+
+/* Connector label */
+.cnx{font-size:9px;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.2);text-align:center;border:1px dashed rgba(255,255,255,.08);border-radius:3px;padding:3px 10px;margin:4px auto;display:inline-block}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div>
+    <h1>法律大模型智能体 · 完整业务逻辑流程图</h1>
+    <p>LEGAL AGENT · FULL BUSINESS LOGIC FLOWCHART · 四阶段 · 全判断分支 · 无删减</p>
+  </div>
+  <div class="legend">
+    <div class="li"><div class="lb lb-done"></div>已完成 ✅</div>
+    <div class="li"><div class="lb lb-plan"></div>未来规划 ⏳</div>
+    <div class="li"><div class="lb lb-io"></div>输入/输出</div>
+    <div class="li"><div class="lb lb-dec"></div>判断节点</div>
+  </div>
+</div>
+
+<!-- BODY: sidebar + main -->
+<div class="wrap">
+
+<!-- Phase sidebar -->
+<div class="phase-bar">
+  <div class="pb pb1">P1 · DATA PIPELINE</div>
+  <div class="pb pb2">P2 · INTERACTION & MEMORY</div>
+  <div class="pb pb3">P3 · RETRIEVAL & RERANK</div>
+  <div class="pb pb4">P4 · REASONING & FEEDBACK</div>
+</div>
+
+<!-- Main flow -->
+<div class="main">
+
+<!-- ════════════════════════════════════════════════════
+     PHASE 1: 数据资产与离线构建
+     ════════════════════════════════════════════════════ -->
+<div class="sec"><div class="sec-line"></div><div class="sec-label sl1">① 数据资产与离线构建流 · Data Pipeline</div><div class="sec-line"></div></div>
+
+<div class="fw">
+  <div class="n ni">
+    <div class="ns">TRIGGER · 后台任务</div>
+    <div class="nt">启动知识库构建任务</div>
+  </div>
+</div>
+<div class="a ag al"></div>
+
+<!-- Decision: 数据源类型 -->
+<div class="dm fw">
+  <div class="d"><div class="di"></div><div class="dt"><span>输入数据源<br>属于哪种<br>类型？</span></div></div>
+</div>
+
+<div class="br">
+  <!-- Branch A: 法律文档 -->
+  <div class="bc" style="flex:3">
+    <div class="bl bly">法律法规 / 司法解释文档</div>
+    <div class="a ag"></div>
+    <div class="n nd" style="width:100%">
+      <div class="ns">STEP 1 · create_registry.py</div>
+      <div class="nt">触发自动注册 · 生成全量映射菜单</div>
+      <div class="nd2">扫描目录 → 动态生成 registry.json<br>此菜单同时锁死后续"意图重写"的法律名可选范围</div>
+      <span class="badge bd">✅ 已完成</span>
+    </div>
+    <div class="a ag"></div>
+    <div class="n nd" style="width:100%">
+      <div class="ns">STEP 2 · data_process.py</div>
+      <div class="nt">基于正则的智能文档层级解析</div>
+      <div class="nd2">精准拆解 编 / 分编 / 章 / 节 / 条 多级目录结构</div>
+      <span class="badge bd">✅ 已完成</span>
+    </div>
+    <div class="a ag"></div>
+
+    <!-- Sub-decision: 跨段落？ -->
+    <div class="dm" style="width:100%">
+      <div class="d d-sm"><div class="di"></div><div class="dt"><span>法条内容<br>是否跨段<br>落回车？</span></div></div>
+    </div>
+    <div class="br" style="width:100%">
+      <div class="bc">
+        <div class="bl bly" style="font-size:8px">是</div>
+        <div class="a ag"></div>
+        <div class="n nd" style="width:100%;padding:8px 11px">
+          <div class="ns">追加开关</div>
+          <div class="nt" style="font-size:11px">开启 Append Switch<br>跨段落无损拼接</div>
+          <span class="badge bd">✅ 已完成</span>
+        </div>
+      </div>
+      <div class="bc">
+        <div class="bl bln" style="font-size:8px">否</div>
+        <div class="a ag"></div>
+        <div class="n" style="width:100%;background:#040e09;border:1px solid #106038;padding:8px 11px">
+          <div class="nt" style="font-size:11px;color:#60d090">直接切块<br>继续处理</div>
+        </div>
+      </div>
+    </div>
+    <div class="a ag"></div>
+    <div class="mg"><span>⊕</span></div><div class="mglbl">汇合</div>
+
+    <div class="n np" style="width:100%">
+      <div class="ns">附加元数据</div>
+      <div class="nt">赋予时效状态与效力位阶标签</div>
+      <div class="nd2">现行 / 废止 / 修订中 · 宪法 &gt; 法律 &gt; 行政法规 &gt; 部门规章</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+    <div class="a ag"></div>
+    <div class="n nd" style="width:100%">
+      <div class="ns">STEP 3 · injest.py</div>
+      <div class="nt">Qwen 0.6B 密集向量化计算</div>
+      <div class="nd2">文本块 → 高维密集向量（Embedding）</div>
+      <span class="badge bd">✅ 已完成</span>
+    </div>
+    <div class="a ag"></div>
+    <div class="n nd" style="width:100%">
+      <div class="ns">数据库写入 · ChromaDB</div>
+      <div class="nt">携带多维元数据存入向量数据库</div>
+      <div class="nd2">绑定：来源文件 · 具体条号 · 章节路径 · 效力位阶</div>
+      <span class="badge bd">✅ 已完成</span>
+    </div>
+    <div class="a ag"></div>
+    <div class="n ni" style="width:100%;padding:8px 12px">
+      <div class="nt" style="font-size:11px;color:#70c0ff">✦ 离线构建完成（主路径）</div>
+    </div>
+  </div>
+
+  <!-- Branch B: 裁判文书 -->
+  <div class="bc" style="flex:2">
+    <div class="bl blp">真实法院裁判文书</div>
+    <div class="a ap"></div>
+    <div class="n np" style="width:100%">
+      <div class="ns">大模型提炼 · IRAC</div>
+      <div class="nt">IRAC 结构化提炼</div>
+      <div class="nd2">争议焦点 · 法律规则<br>事实应用 · 判决结论</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+    <div class="a ap"></div>
+    <div class="n np" style="width:100%">
+      <div class="ns">图数据库写入 · Neo4j</div>
+      <div class="nt">构建"法律知识图谱"</div>
+      <div class="nd2">法条节点 ↔ 案例节点<br>关系边 · 类案同判</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+    <div class="a ap"></div>
+    <div class="n" style="width:100%;background:#0e0a18;border:1px dashed #5a3a8a;padding:8px 12px">
+      <div class="nt" style="font-size:11px;color:#b090f0">✦ 图谱构建完成</div>
+    </div>
+  </div>
+</div><!-- /br phase1 -->
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════════════
+     PHASE 2: 前台交互与上下文记忆
+     ════════════════════════════════════════════════════ -->
+<div class="sec"><div class="sec-line"></div><div class="sec-label sl2">② 前台交互与多轮上下文记忆流 · Interaction & Memory</div><div class="sec-line"></div></div>
+
+<div class="fw">
+  <div class="n np">
+    <div class="ns">P2 入口 · Web前端</div>
+    <div class="nt">用户在 Web 可视化前端发起请求</div>
+    <div class="nd2">图形化交互界面（Streamlit / 自研前端）</div>
+    <span class="badge bp">⏳ 未来规划</span>
+  </div>
+</div>
+<div class="a ab al"></div>
+
+<!-- Decision: Token超出阈值？ -->
+<div class="dm fw">
+  <div class="d"><div class="di"></div><div class="dt"><span>历史对话<br>是否超出<br>Token安全<br>阈值？</span></div></div>
+</div>
+
+<div class="br">
+  <div class="bc">
+    <div class="bl bly">是 · 超出阈值</div>
+    <div class="a ab"></div>
+    <div class="n np" style="width:100%">
+      <div class="ns">上下文压缩</div>
+      <div class="nt">触发滑动窗口 + 大模型摘要压缩</div>
+      <div class="nd2">裁剪早期历史 · 对冗长案情摘要压缩</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+    <div class="a ab"></div>
+    <div class="n np" style="width:100%">
+      <div class="ns">向量化记忆</div>
+      <div class="nt">将压缩后案情存入向量化记忆库</div>
+      <div class="nd2">超长案情向量化 → 按需检索唤回</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+  </div>
+  <div class="bc">
+    <div class="bl bln">否 · 在阈值内</div>
+    <div class="a ab"></div>
+    <div class="n" style="width:100%;background:#070f1a;border:1px solid #185898;padding:8px 12px">
+      <div class="nt" style="font-size:11px;color:#70c0ff">历史对话直接<br>保留传递</div>
+    </div>
+  </div>
+</div>
+
+<div class="a ab al"></div>
+<div class="mg"><span>⊕</span></div><div class="mglbl">上下文就绪后汇合</div>
+
+<!-- Decision: 任务类型 -->
+<div class="dm fw">
+  <div class="d"><div class="di"></div><div class="dt"><span>用户输入<br>任务类型<br>是什么？</span></div></div>
+</div>
+
+<div class="br">
+  <!-- 合同审查 -->
+  <div class="bc" style="flex:2">
+    <div class="bl blo">上传合同附件</div>
+    <div class="a" style="background:rgba(255,140,60,.2);height:14px"></div>
+    <div class="a" style="background:rgba(255,140,60,.2);height:0px"></div>
+    <div class="n np" style="width:100%">
+      <div class="ns">合同审查</div>
+      <div class="nt">逐条解析合同<br>比对本地法库</div>
+      <div class="nd2">解析条款 · 识别违约金超标<br>合规风险高亮</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+    <div class="a" style="background:rgba(255,140,60,.2);height:14px"></div>
+    <div class="n no" style="width:100%">
+      <div class="ns">输出</div>
+      <div class="nt">输出包含合规提示的审查报告</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+    <div class="a" style="background:rgba(255,140,60,.2);height:14px"></div>
+    <div class="n" style="width:100%;background:#0d0804;border:1px solid #7a3810;padding:8px 12px">
+      <div class="nt" style="font-size:11px;color:#d89050">✦ 流程结束</div>
+    </div>
+  </div>
+
+  <!-- 法律咨询 -->
+  <div class="bc" style="flex:3">
+    <div class="bl blb">输入文本 / 法律咨询</div>
+    <div class="a ab"></div>
+    <div class="n np" style="width:100%">
+      <div class="ns">STEP 4 · Agent 中控</div>
+      <div class="nt">Agent 智能路由中枢判断领域分类</div>
+      <div class="nd2">意图分类 → 实体法 / 程序法 / 案例 / 闲聊</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+    <div class="a ab"></div>
+
+    <!-- Decision: 检索通道 -->
+    <div class="dm" style="width:100%">
+      <div class="d d-sm"><div class="di"></div><div class="dt"><span>路由至哪<br>个检索<br>通道？</span></div></div>
+    </div>
+    <div class="br" style="width:100%">
+      <!-- 判例路线 -->
+      <div class="bc">
+        <div class="bl blp" style="font-size:8px">找判例</div>
+        <div class="a ap"></div>
+        <div class="n np" style="width:100%;padding:8px 10px">
+          <div class="ns">案例库</div>
+          <div class="nt" style="font-size:11px">图谱/案例库<br>游走检索</div>
+          <span class="badge bp" style="font-size:7px">⏳</span>
+        </div>
+        <div class="a ap"></div>
+        <div class="n" style="width:100%;background:#0e0a18;border:1px dashed #5a3a8a;padding:7px 9px">
+          <div class="nt" style="font-size:10px;color:#b090f0">提取类案结果</div>
+        </div>
+        <div class="a ap"></div>
+        <div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(180,100,255,.4);text-align:center">↓ 跳转生成环节</div>
+      </div>
+      <!-- 找法条路线 -->
+      <div class="bc">
+        <div class="bl blb" style="font-size:8px">找法条</div>
+        <div class="a ab"></div>
+        <div class="n nd" style="width:100%;padding:8px 10px">
+          <div class="ns">提取菜单</div>
+          <div class="nt" style="font-size:11px">加载 registry.json<br>全量法律菜单</div>
+          <span class="badge bd" style="font-size:7px">✅</span>
+        </div>
+        <div class="a ab"></div>
+        <div class="n nd" style="width:100%;padding:8px 10px">
+          <div class="ns">STEP 5 · 意图重写</div>
+          <div class="nt" style="font-size:11px">LLM 防幻觉<br>标准化意图重写</div>
+          <div class="nd2" style="font-size:8px">口语 → 【法律-第X条】+关键词</div>
+          <span class="badge bd" style="font-size:7px">✅</span>
+        </div>
+        <div class="a ab"></div>
+        <div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(60,150,255,.4);text-align:center">↓ 进入检索引擎</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════════════
+     PHASE 3: 双轨检索与重排
+     ════════════════════════════════════════════════════ -->
+<div class="sec"><div class="sec-line"></div><div class="sec-label sl3">③ 双轨混合检索与重排流 · Retrieval & Rerank Engine</div><div class="sec-line"></div></div>
+
+<div class="fw" style="margin-bottom:4px">
+  <div class="n nm" style="text-align:center;padding:7px 14px">
+    <div class="nt" style="font-size:11px;color:#d4c060">← 进入核心检索引擎（来自 P2 意图重写结果）</div>
+  </div>
+</div>
+<div class="a" style="background:rgba(200,80,220,.2);height:14px"></div>
+
+<!-- Decision: 含法条标签？ -->
+<div class="dm fw">
+  <div class="d"><div class="di"></div><div class="dt"><span>重写指令<br>中是否含<br>【法律-条号】<br>标签？</span></div></div>
+</div>
+
+<div class="br">
+  <!-- TRACK A -->
+  <div class="bc" style="flex:3">
+    <div class="bl bly">包含特定标签</div>
+    <div class="a ag"></div>
+    <div class="n nd" style="width:100%">
+      <div class="ns">TRACK A · search.py</div>
+      <div class="nt">轨道 A：VIP 精准点名检索</div>
+      <div class="nd2">解析标签 → 提取核心法律名 + 条文编号</div>
+      <span class="badge bd">✅ 已完成</span>
+    </div>
+    <div class="a ag"></div>
+
+    <!-- Sub-decision: 身份对等 -->
+    <div class="dm" style="width:100%">
+      <div class="d d-sm"><div class="di"></div><div class="dt"><span>查询词与<br>数据库来源<br>"身份"<br>是否对等？</span></div></div>
+    </div>
+    <div class="br" style="width:100%">
+      <div class="bc">
+        <div class="bl bln" style="font-size:8px">身份不对等</div>
+        <div class="a" style="background:rgba(255,60,60,.2);height:14px"></div>
+        <div class="n" style="width:100%;background:#180808;border:1px solid #882020;padding:8px 10px">
+          <div class="ns">校验锁</div>
+          <div class="nt" style="font-size:11px;color:#ff7070">触发身份校验锁<br>强制拦截误触</div>
+          <div class="nd2" style="color:rgba(255,80,80,.4);font-size:8px">杜绝法典与解释的寄生匹配</div>
+          <span class="badge bd" style="font-size:7px">✅</span>
+        </div>
+      </div>
+      <div class="bc">
+        <div class="bl bly" style="font-size:8px">身份对等</div>
+        <div class="a ag"></div>
+        <div class="n nd" style="width:100%;padding:8px 10px">
+          <div class="ns">元数据匹配</div>
+          <div class="nt" style="font-size:11px">触发绝对元数据<br>匹配抽取法条</div>
+          <span class="badge bd" style="font-size:7px">✅</span>
+        </div>
+        <div class="a ag"></div>
+        <div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(0,200,100,.4);text-align:center">↓ 汇入候选池</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRACK B -->
+  <div class="bc" style="flex:2">
+    <div class="bl blp">剥离标签后纯语义</div>
+    <div class="a ap"></div>
+    <div class="n nd" style="width:100%">
+      <div class="ns">TRACK B · search.py</div>
+      <div class="nt">轨道 B：语义向量海选检索</div>
+      <div class="nd2">剥离指令标签<br>保留纯语义关键词</div>
+      <span class="badge bd">✅ 已完成</span>
+    </div>
+    <div class="a ag"></div>
+    <div class="n nd" style="width:100%">
+      <div class="ns">模糊召回</div>
+      <div class="nt">执行 Cos 余弦相似度<br>模糊候选召回</div>
+      <div class="nd2">无明确条号时的兜底保障</div>
+      <span class="badge bd">✅ 已完成</span>
+    </div>
+    <div class="a ag"></div>
+    <div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(0,200,100,.4);text-align:center">↓ 汇入候选池</div>
+  </div>
+</div>
+
+<div class="a ag al" style="margin-top:4px"></div>
+<div class="mg"><span>⊕</span></div>
+<div class="mglbl">两路结果合并进入初筛候选池</div>
+
+<div class="fw">
+  <div class="n nd">
+    <div class="ns">STEP 6 · rerank.py</div>
+    <div class="nt">调用 BGE-M3 交叉编码器动态重排打分</div>
+    <div class="nd2">对粗排召回法条进行细粒度二次打分 · 计算 Query 与候选项交叉相关性</div>
+    <span class="badge bd">✅ 已完成</span>
+  </div>
+</div>
+<div class="a ag al"></div>
+
+<!-- Decision: VIP保送 -->
+<div class="dm fw">
+  <div class="d"><div class="di"></div><div class="dt"><span>该条文是否<br>来自轨道A<br>精确命中？</span></div></div>
+</div>
+
+<div class="br">
+  <div class="bc">
+    <div class="bl bly">是 · VIP命中</div>
+    <div class="a ag"></div>
+    <div class="n nd" style="width:100%">
+      <div class="ns">免死金牌保送</div>
+      <div class="nt">触发保送机制<br>强制赋 999 分锁定头部</div>
+      <div class="nd2">绝对不会被阈值截断淘汰</div>
+      <span class="badge bd">✅ 已完成</span>
+    </div>
+  </div>
+  <div class="bc">
+    <div class="bl bln">否 · 普通召回</div>
+    <div class="a ag"></div>
+    <div class="n nd" style="width:100%">
+      <div class="ns">阈值过滤</div>
+      <div class="nt">根据阈值 Threshold<br>过滤淘汰低分候选</div>
+      <div class="nd2">保留高相关性结果</div>
+      <span class="badge bd">✅ 已完成</span>
+    </div>
+  </div>
+</div>
+
+<div class="a ag al" style="margin-top:4px"></div>
+<div class="mg"><span>⊕</span></div>
+<div class="mglbl">汇入 Top-K 高质弹药库</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════════════
+     PHASE 4: 多跳推理 / 生成 / 审查 / 反馈
+     ════════════════════════════════════════════════════ -->
+<div class="sec"><div class="sec-line"></div><div class="sec-label sl4">④ 多跳推理 · 生成审查 · 数据飞轮 · Reasoning & Feedback Loop</div><div class="sec-line"></div></div>
+
+<!-- Decision: 连环案情？ -->
+<div class="dm fw">
+  <div class="d"><div class="di"></div><div class="dt"><span>当前是单一<br>问题还是<br>复杂连环<br>案情？</span></div></div>
+</div>
+
+<div class="br">
+  <div class="bc">
+    <div class="bl blp">连环案情·证据链缺失</div>
+    <div class="a ap"></div>
+    <div class="n np" style="width:100%">
+      <div class="ns">多跳推理</div>
+      <div class="nt">触发 Multi-hop Reasoning</div>
+      <div class="nd2">LLM 自主规划子问题清单</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+    <div class="a ap"></div>
+    <div class="n np" style="width:100%">
+      <div class="ns">循环补充</div>
+      <div class="nt">返回 P2/P3 发起二次检索</div>
+      <div class="nd2">补齐缺失法条后重新进入 P4</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+    <div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(180,100,255,.4);text-align:center;margin-top:4px">↩ 返回 P3 补充检索</div>
+  </div>
+  <div class="bc">
+    <div class="bl bly">案情简单 / 拼图完整</div>
+    <div class="a ao"></div>
+    <div class="n nd" style="width:100%">
+      <div class="ns">STEP 7 · main.py · Prompt 组装</div>
+      <div class="nt">组装防幻觉 Prompt 上下文</div>
+      <div class="nd2">裁剪后的记忆 + Top-K 引用法条原文<br>+ 强力约束（禁止编造条号）</div>
+      <span class="badge bd">✅ 已完成</span>
+    </div>
+    <div class="a ao"></div>
+
+    <!-- Decision: 输出格式 -->
+    <div class="dm" style="width:100%">
+      <div class="d d-sm"><div class="di"></div><div class="dt"><span>用户要求<br>输出格式<br>是什么？</span></div></div>
+    </div>
+    <div class="br" style="width:100%">
+      <div class="bc">
+        <div class="bl blo" style="font-size:8px">格式文书</div>
+        <div class="a ao"></div>
+        <div class="n np" style="width:100%;padding:8px 10px">
+          <div class="ns">文书生成</div>
+          <div class="nt" style="font-size:11px">一键生成<br>起诉状 / 律师函<br>答辩状</div>
+          <span class="badge bp" style="font-size:7px">⏳</span>
+        </div>
+      </div>
+      <div class="bc">
+        <div class="bl bly" style="font-size:8px">口语解答</div>
+        <div class="a ao"></div>
+        <div class="n nd" style="width:100%;padding:8px 10px">
+          <div class="ns">STEP 8 · Qwen 7B 本地推理</div>
+          <div class="nt" style="font-size:11px">生成带精确<br>溯源的专业解答</div>
+          <div class="nd2" style="font-size:8px">全本地化 · 结合 vLLM 推理加速</div>
+          <span class="badge bm" style="font-size:7px">✅ 完成 / ⏳ vLLM加速</span>
+        </div>
+      </div>
+    </div>
+    <div class="a ao" style="margin-top:4px"></div>
+    <div class="mg"><span>⊕</span></div>
+    <div class="mglbl">待审查内容汇合</div>
+
+    <!-- Critic -->
+    <div class="n np" style="width:100%">
+      <div class="ns">STEP 9 · Critic LLM 内部审查</div>
+      <div class="nt">触发 Critic 审查机制</div>
+      <div class="nd2">核对：生成内容是否严格遵循引用法条<br>检测：是否存在条号捏造或外延扩大</div>
+      <span class="badge bp">⏳ 未来规划</span>
+    </div>
+    <div class="a ao"></div>
+
+    <!-- Decision: 幻觉？ -->
+    <div class="dm" style="width:100%">
+      <div class="d d-sm"><div class="di"></div><div class="dt"><span>存在法条<br>引用失实<br>/ 幻觉？</span></div></div>
+    </div>
+    <div class="br" style="width:100%">
+      <div class="bc">
+        <div class="bl bln" style="font-size:8px">存在幻觉</div>
+        <div class="a" style="background:rgba(255,60,60,.2);height:14px"></div>
+        <div class="n" style="width:100%;background:#180808;border:1px solid #882020;padding:8px 10px">
+          <div class="nt" style="font-size:11px;color:#ff7070">强制拦截<br>打回重写</div>
+          <span class="badge bp" style="font-size:7px">⏳</span>
+        </div>
+        <div class="retry">↩ 返回 STEP 8 重新生成</div>
+      </div>
+      <div class="bc">
+        <div class="bl bly" style="font-size:8px">安全合规</div>
+        <div class="a ao"></div>
+        <div class="n no" style="width:100%;padding:8px 10px">
+          <div class="ns">STEP 10 · 前端展示</div>
+          <div class="nt" style="font-size:11px">向前端展示<br>带"引用溯源卡片"<br>的最终回答</div>
+          <span class="badge bd" style="font-size:7px">✅ 已完成</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /案情简单bc -->
+</div><!-- /br phase4 decision -->
+
+<div class="a ao al" style="margin-top:8px"></div>
+
+<!-- 数据飞轮 -->
+<div class="fw">
+  <div class="n nm" style="padding:10px 16px">
+    <div class="ns">STEP 11 · 数据进化飞轮 (后台并行执行)</div>
+    <div class="nt">进入数据飞轮闭环</div>
+  </div>
+</div>
+<div class="a ao"></div>
+
+<div class="fw-row">
+  <div class="fw-item">
+    <div class="ns" style="font-size:8px">飞轮 ① · RAGAS</div>
+    <div class="nt">RAGAS 评估体系<br>自动评分</div>
+    <div style="font-size:9px;color:rgba(160,100,240,.45);margin-top:3px;line-height:1.5">上下文精度<br>忠实度<br>回答相关性</div>
+    <span class="badge bp">⏳ 未来规划</span>
+  </div>
+  <div class="fw-item">
+    <div class="ns" style="font-size:8px">飞轮 ② · 用户偏好</div>
+    <div class="nt">采集用户<br>点赞 / 踩偏好日志</div>
+    <div style="font-size:9px;color:rgba(160,100,240,.45);margin-top:3px;line-height:1.5">真实采纳行为<br>收集偏好信号</div>
+    <span class="badge bp">⏳ 未来规划</span>
+  </div>
+  <div class="fw-item">
+    <div class="ns" style="font-size:8px">飞轮 ③ · RLHF 微调</div>
+    <div class="nt">隐式微调 Rerank<br>模型进化</div>
+    <div style="font-size:9px;color:rgba(160,100,240,.45);margin-top:3px;line-height:1.5">偏好数据 → 微调<br>BGE Reranker<br>越用越准</div>
+    <span class="badge bp">⏳ 未来规划</span>
+  </div>
+</div>
+<div class="loop">↩ 反馈数据回流 → 优化 Reranker → 系统持续进化 → 下一轮检索质量提升</div>
+
+</div><!-- /main -->
+</div><!-- /wrap -->
+
+</body>
+</html>
