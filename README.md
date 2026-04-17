@@ -40,8 +40,9 @@ ollama run Lusizo/qwen2.5-7b-instruct-1m
 ```bash
 需要node-js环境，请自己安装
 cd next-app
-npm install
-npm run dev
+npm install -g pnpm
+pnpm dev 代替 npm run dev
+cloudflare中用pnpm run build 代替 npm run build   pnpm中run可省略
 ```
 
 启动后访问：http://localhost:3000
