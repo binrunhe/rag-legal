@@ -3,6 +3,7 @@ import { memo } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { useCopyToClipboard } from "usehooks-ts";
+import { getApiUrl } from "@/lib/api-url";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import {
@@ -89,7 +90,7 @@ export function PureMessageActions({
         disabled={vote?.isUpvoted}
         onClick={() => {
           const upvote = fetch(
-            `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/vote`,
+            getApiUrl("/api/vote"),
             {
               method: "PATCH",
               body: JSON.stringify({
@@ -104,7 +105,7 @@ export function PureMessageActions({
             loading: "Upvoting Response...",
             success: () => {
               mutate<Vote[]>(
-                `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/vote?chatId=${chatId}`,
+                getApiUrl(`/api/vote?chatId=${chatId}`),
                 (currentVotes) => {
                   if (!currentVotes) {
                     return [];
@@ -142,7 +143,7 @@ export function PureMessageActions({
         disabled={vote && !vote.isUpvoted}
         onClick={() => {
           const downvote = fetch(
-            `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/vote`,
+            getApiUrl("/api/vote"),
             {
               method: "PATCH",
               body: JSON.stringify({
@@ -157,7 +158,7 @@ export function PureMessageActions({
             loading: "Downvoting Response...",
             success: () => {
               mutate<Vote[]>(
-                `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/vote?chatId=${chatId}`,
+                getApiUrl(`/api/vote?chatId=${chatId}`),
                 (currentVotes) => {
                   if (!currentVotes) {
                     return [];

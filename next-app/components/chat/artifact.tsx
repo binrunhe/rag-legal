@@ -18,6 +18,7 @@ import { imageArtifact } from "@/artifacts/image/client";
 import { sheetArtifact } from "@/artifacts/sheet/client";
 import { textArtifact } from "@/artifacts/text/client";
 import { useArtifact } from "@/hooks/use-artifact";
+import { getApiUrl } from "@/lib/api-url";
 import type { Document, Vote } from "@/lib/db/schema";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { fetcher } from "@/lib/utils";
@@ -95,7 +96,7 @@ function PureArtifact({
     mutate: mutateDocuments,
   } = useSWR<Document[]>(
     artifact.documentId !== "init" && artifact.status !== "streaming"
-      ? `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/document?id=${artifact.documentId}`
+      ? getApiUrl(`/api/document?id=${artifact.documentId}`)
       : null,
     fetcher
   );
@@ -154,7 +155,7 @@ function PureArtifact({
       }
 
       mutate<Document[]>(
-        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/document?id=${artifact.documentId}`,
+        getApiUrl(`/api/document?id=${artifact.documentId}`),
         async (currentDocuments) => {
           if (!currentDocuments) {
             return [];
@@ -173,7 +174,7 @@ function PureArtifact({
           }
 
           await fetch(
-            `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/document?id=${artifact.documentId}`,
+            getApiUrl(`/api/document?id=${artifact.documentId}`),
             {
               method: "POST",
               body: JSON.stringify({

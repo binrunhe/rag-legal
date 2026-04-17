@@ -24,6 +24,7 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { getApiUrl } from "@/lib/api-url";
 import type { Chat } from "@/lib/db/schema";
 import { fetcher } from "@/lib/utils";
 import { LoaderIcon } from "./icons";
@@ -86,7 +87,7 @@ export function getChatHistoryPaginationKey(
   }
 
   if (pageIndex === 0) {
-    return `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/history?limit=${PAGE_SIZE}`;
+    return getApiUrl(`/api/history?limit=${PAGE_SIZE}`);
   }
 
   const firstChatFromPage = previousPageData.chats.at(-1);
@@ -95,7 +96,9 @@ export function getChatHistoryPaginationKey(
     return null;
   }
 
-  return `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
+  return getApiUrl(
+    `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`
+  );
 }
 
 export function SidebarHistory({ user }: { user: User | undefined }) {
@@ -146,10 +149,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
       }
     });
 
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/chat?id=${chatToDelete}`,
-      { method: "DELETE" }
-    );
+    fetch(getApiUrl(`/api/chat?id=${chatToDelete}`), { method: "DELETE" });
 
     toast.success("Chat deleted");
   };

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Dict, Optional
+from pydantic import BaseModel, Field
+from typing import List, Optional, Literal
 import uvicorn
 import torch
 
@@ -33,9 +33,16 @@ app.add_middleware(
 # ==========================================
 # 定义前端传过来的数据格式 (数据校验层)
 # ==========================================
+class HistoryMessage(BaseModel):
+    role: Literal["user", "assistant"]  # 仅允许 user / assistant
+    content: str                           # 对应当前消息文本
+
+
 class ChatRequest(BaseModel):
     query: str                                  # 用户当前的问题
-    history: List[Dict[str, str]] = []          # 历史对话，格式如 [{"user":"...", "bot":"..."}]
+    # 历史对话格式固定为:
+    # [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+    history: List[HistoryMessage] = Field(default_factory=list)
 
     # 开放给前端的“大厂级”配置开关 (带默认值)
     top_n: Optional[int] = Config.DEFAULT_TOP_N                 # 决定最后引用几条法条

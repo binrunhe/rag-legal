@@ -3,6 +3,36 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 import re
 
+
+# 兼容以下格式：
+# 1) 【刑法-第十条】
+# 2) 【刑法 第十条】
+# 3) 【刑法第十条】
+PRECISE_TAG_PATTERN = re.compile(
+    r'^\s*(?P<law>.+?)(?:\s*[-－—–]\s*|\s+)?(?P<article>第[一二三四五六七八九十百千万零〇两\d]+条(?:之[一二三四五六七八九十百千万零〇两\d]+)?)\s*$'
+)
+
+
+def parse_precise_tag(tag_text):
+    """从标签文本中提取法律名和条号，失败返回 None。"""
+    if not tag_text:
+        return None
+
+    match = PRECISE_TAG_PATTERN.match(tag_text.strip())
+    if not match:
+        return None
+
+    law_name = match.group('law').strip()
+    article_num = match.group('article').strip()
+
+    if not law_name or not article_num:
+        return None
+
+    return {
+        'law_name': law_name,
+        'article_number': article_num,
+    }
+
 # db_path = "./legal_vector_db"
 # collection_name = "china_civil_code"
 # model_name = "Qwen/Qwen3-Embedding-0.6B"
@@ -44,16 +74,19 @@ def run_search(rewrite_text, db_path, collection_name, model_name, n_results):
     seen_keys = set()
 
     #  VIP 拦截轨：精准点名
-    # 提取所有标签，如 【刑法-第二百三十三条】
+    # 提取所有标签，如：
+    # - 【刑法-第二百三十三条】
+    # - 【刑法 第二百三十三条】
+    # - 【刑法第二百三十三条】
     tags = re.findall(r'【(.*?)】', rewrite_text)
 
     for tag in tags:
-        if '-' not in tag: continue
+        parsed = parse_precise_tag(tag)
+        if not parsed:
+            continue
 
-        parts = tag.split('-')
-        # 【关键修复】：加上 .strip() 去除可能存在的首尾空格
-        law_name_query = parts[0].strip() if parts[0] != "未知" else None
-        article_num = parts[-1].strip()
+        law_name_query = parsed['law_name'] if parsed['law_name'] != "未知" else None
+        article_num = parsed['article_number']
 
         # 数据库查询：只按编号搜（编号是唯一的，这样最稳）
         res = collection.get(where={"article_number": article_num})

@@ -42,6 +42,7 @@ import {
   DEFAULT_CHAT_MODEL,
   type ModelCapabilities,
 } from "@/lib/ai/models";
+import { getApiUrl } from "@/lib/api-url";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -181,7 +182,7 @@ function PureMultimodalInput({
             label: "Delete",
             onClick: () => {
               fetch(
-                `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/chat?id=${chatId}`,
+                getApiUrl(`/api/chat?id=${chatId}`),
                 { method: "DELETE" }
               );
               router.push("/");
@@ -195,7 +196,7 @@ function PureMultimodalInput({
           action: {
             label: "Delete all",
             onClick: () => {
-              fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/history`, {
+              fetch(getApiUrl("/api/history"), {
                 method: "DELETE",
               });
               router.push("/");
@@ -262,7 +263,7 @@ function PureMultimodalInput({
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/files/upload`,
+        getApiUrl("/api/files/upload"),
         {
           method: "POST",
           body: formData,
@@ -594,7 +595,7 @@ function PureAttachmentsButton({
   selectedModelId: string;
 }) {
   const { data: modelsResponse } = useSWR(
-    `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
+    getApiUrl("/api/models"),
     (url: string) => fetch(url).then((r) => r.json()),
     { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
   );
@@ -635,7 +636,7 @@ function PureModelSelectorCompact({
 }) {
   const [open, setOpen] = useState(false);
   const { data: modelsData } = useSWR(
-    `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
+    getApiUrl("/api/models"),
     (url: string) => fetch(url).then((r) => r.json()),
     { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
   );

@@ -40,3 +40,4 @@ config.py统一设置参数
                         (返回响应)
 FastAPI 是"做什么"（业务逻辑），Uvicorn 是"怎么跑"（运行容器）
 
+22.前后端链接,统一传参格式及请求地址   prompt优化,修复精确搜索bug  enter输入,shift+enter回车

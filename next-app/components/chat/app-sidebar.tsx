@@ -42,6 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
+import { getApiUrl } from "@/lib/api-url";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 export function AppSidebar({ user }: { user: User | undefined }) {
@@ -57,7 +58,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       revalidate: false,
     });
 
-    fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/history`, {
+    fetch(getApiUrl("/api/history"), {
       method: "DELETE",
     });
 

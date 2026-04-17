@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { getApiUrl } from "@/lib/api-url";
 import { cn } from "@/lib/utils";
 
 type ChatRole = "user" | "assistant";
@@ -31,13 +32,6 @@ const suggestions = [
   "请列出探望权纠纷中常见的裁判思路。",
 ];
 
-const mockReplies = [
-  "从法律研究角度，建议先识别事实、法律关系与举证责任，再按条文层级匹配法条及司法解释。",
-  "实务上可按“争点识别-规范适用-构成要件分析-诉讼风险与证据策略”展开。",
-  "这个问题建议优先确认法律位阶，再补充最高人民法院司法解释，避免条文适用错位。",
-  "你可以先拆分为当事人身份、争议行为、因果关系和救济范围，再逐点组织论证。",
-];
-
 const historySeeds = [
   "租赁纠纷责任分析",
   "保证合同效力核查清单",
@@ -45,9 +39,134 @@ const historySeeds = [
   "侵权赔偿范围速查笔记",
 ];
 
-function generateReply(input: string) {
-  const base = mockReplies[input.length % mockReplies.length];
-  return `${base}\n\n你的问题是：${input}`;
+function extractTextFromUnknownPayload(payload: unknown): string {
+  if (typeof payload === "string") {
+    return payload;
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return "";
+  }
+
+  const record = payload as Record<string, unknown>;
+
+  if (typeof record.answer === "string") {
+    return record.answer;
+  }
+
+  if (typeof record.delta === "string") {
+    return record.delta;
+  }
+
+  if (typeof record.text === "string") {
+    return record.text;
+  }
+
+  if (typeof record.content === "string") {
+    return record.content;
+  }
+
+  if (record.message) {
+    const nested = extractTextFromUnknownPayload(record.message);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  if (record.data) {
+    const nested = extractTextFromUnknownPayload(record.data);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  if (Array.isArray(record.parts)) {
+    return record.parts
+      .map((part) => {
+        if (part && typeof part === "object") {
+          const p = part as Record<string, unknown>;
+          if (p.type === "text" && typeof p.text === "string") {
+            return p.text;
+          }
+          if (typeof p.delta === "string") {
+            return p.delta;
+          }
+        }
+        return "";
+      })
+      .join("");
+  }
+
+  return "";
+}
+
+async function readAssistantText(response: Response): Promise<string> {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("text/event-stream")) {
+    if (!response.body) {
+      return "";
+    }
+
+    const decoder = new TextDecoder();
+    const reader = response.body.getReader();
+    let buffer = "";
+    let assistantText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line.startsWith("data:")) {
+          continue;
+        }
+
+        const data = line.slice(5).trim();
+        if (!data || data === "[DONE]") {
+          continue;
+        }
+
+        try {
+          const parsed = JSON.parse(data);
+          assistantText += extractTextFromUnknownPayload(parsed);
+        } catch {
+          assistantText += data;
+        }
+      }
+    }
+
+    return assistantText.trim();
+  }
+
+  if (contentType.includes("application/json")) {
+    const json = await response.json();
+    const text = extractTextFromUnknownPayload(json).trim();
+
+    if (text) {
+      return text;
+    }
+
+    if (
+      json &&
+      typeof json === "object" &&
+      "answer" in json &&
+      typeof (json as { answer?: unknown }).answer === "string"
+    ) {
+      return ((json as { answer: string }).answer ?? "").trim();
+    }
+
+    return "";
+  }
+
+  return (await response.text()).trim();
 }
 
 export default function LegalAssistantPage() {
@@ -80,14 +199,20 @@ export default function LegalAssistantPage() {
     return { userCount, assistantCount };
   }, [messages]);
 
-  const addUserMessage = (question: string) => {
+  const addUserMessage = async (question: string) => {
     const text = question.trim();
     if (!text) return;
+
+    if (isSending) {
+      return;
+    }
+
+    const userMessageId = `u-${Date.now()}`;
 
     setMessages((previous) => [
       ...previous,
       {
-        id: `u-${Date.now()}`,
+        id: userMessageId,
         role: "user",
         content: text,
       },
@@ -95,17 +220,67 @@ export default function LegalAssistantPage() {
     setInput("");
     setIsSending(true);
 
-    window.setTimeout(() => {
+    try {
+      const response = await fetch(getApiUrl("/api/chat"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          query: text,
+          history: messages.map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+          top_n: 5,
+          n_results: 15,
+          threshold: -2,
+          force_search: true,
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMessage = `请求失败（${response.status}）`;
+        try {
+          const errorJson = await response.json();
+          errorMessage =
+            (errorJson?.message as string | undefined) ||
+            (errorJson?.error as string | undefined) ||
+            errorMessage;
+        } catch {
+          // ignore json parse failure
+        }
+        throw new Error(errorMessage);
+      }
+
+      const assistantReply = await readAssistantText(response);
+
       setMessages((previous) => [
         ...previous,
         {
           id: `a-${Date.now()}`,
           role: "assistant",
-          content: generateReply(text),
+          content: assistantReply || "后端已响应，但未返回可展示文本。",
         },
       ]);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "请求后端失败，请检查 API 地址和登录状态。";
+
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: `a-error-${Date.now()}`,
+          role: "assistant",
+          content: `请求后端失败：${message}`,
+        },
+      ]);
+    } finally {
       setIsSending(false);
-    }, 520);
+    }
   };
 
   const resetChat = () => {
@@ -199,7 +374,9 @@ export default function LegalAssistantPage() {
                   <button
                     className="rounded-xl border border-border/30 bg-card/20 px-3 py-2.5 text-left text-[12px] leading-relaxed text-muted-foreground/70 transition-all duration-200 hover:border-border/60 hover:bg-card/40 hover:text-muted-foreground"
                     key={suggestion}
-                    onClick={() => addUserMessage(suggestion)}
+                    onClick={() => {
+                      void addUserMessage(suggestion);
+                    }}
                     type="button"
                   >
                     {suggestion}
@@ -265,7 +442,7 @@ export default function LegalAssistantPage() {
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              addUserMessage(input);
+              void addUserMessage(input);
             }}
             className="rounded-2xl border border-border/40 bg-card/70 p-2"
           >
@@ -273,6 +450,17 @@ export default function LegalAssistantPage() {
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+
+                    if (!canSend) {
+                      return;
+                    }
+
+                    void addUserMessage(input);
+                  }
+                }}
                 placeholder="请输入你的法律问题..."
                 className="min-h-[54px] max-h-44 flex-1 resize-none rounded-xl border border-border/30 bg-background px-3 py-3 text-sm outline-none"
               />

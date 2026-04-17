@@ -7,6 +7,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { useArtifact } from "@/hooks/use-artifact";
+import { getApiUrl } from "@/lib/api-url";
 import type { Document } from "@/lib/db/schema";
 import { cn, getDocumentTimestampByIndex } from "@/lib/utils";
 import { LoaderIcon } from "./icons";
@@ -91,12 +92,14 @@ export const VersionFooter = ({
 
             try {
               await mutate(
-                `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/document?id=${artifact.documentId}`,
+                getApiUrl(`/api/document?id=${artifact.documentId}`),
                 await fetch(
-                  `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/document?id=${artifact.documentId}&timestamp=${getDocumentTimestampByIndex(
-                    documents,
-                    currentVersionIndex
-                  )}`,
+                  getApiUrl(
+                    `/api/document?id=${artifact.documentId}&timestamp=${getDocumentTimestampByIndex(
+                      documents,
+                      currentVersionIndex
+                    )}`
+                  ),
                   {
                     method: "DELETE",
                   }

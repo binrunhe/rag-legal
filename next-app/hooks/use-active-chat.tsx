@@ -23,6 +23,7 @@ import { toast } from "@/components/chat/toast";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
+import { getApiUrl } from "@/lib/api-url";
 import type { Vote } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
@@ -85,7 +86,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const { data: chatData, isLoading } = useSWR(
     isNewChat
       ? null
-      : `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/messages?chatId=${chatId}`,
+      : getApiUrl(`/api/messages?chatId=${chatId}`),
     fetcher,
     { revalidateOnFocus: false }
   );
@@ -123,7 +124,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       );
     },
     transport: new DefaultChatTransport({
-      api: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/chat`,
+      api: getApiUrl("/api/chat"),
       fetch: fetchWithErrorHandlers,
       prepareSendMessagesRequest(request) {
         const lastMessage = request.messages.at(-1);
@@ -238,7 +239,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
 
   const { data: votes } = useSWR<Vote[]>(
     !isReadonly && messages.length >= 2
-      ? `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/vote?chatId=${chatId}`
+      ? getApiUrl(`/api/vote?chatId=${chatId}`)
       : null,
     fetcher,
     { revalidateOnFocus: false }
