@@ -28,7 +28,7 @@ def generate_6_digit_code() -> str:
 
 def _send_email_blocking(to_email: str, code: str) -> None:
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_port = int(os.getenv("SMTP_PORT", "465"))
     smtp_user = os.getenv("SMTP_USER", "")
     smtp_password = os.getenv("SMTP_PASSWORD", "")
     smtp_from = os.getenv("SMTP_FROM", smtp_user)
@@ -48,8 +48,7 @@ def _send_email_blocking(to_email: str, code: str) -> None:
     msg["From"] = formataddr(("法律智能体", smtp_from))
     msg["To"] = to_email
 
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
-        server.starttls()
+    with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
         server.login(smtp_user, smtp_password)
         server.sendmail(smtp_from, [to_email], msg.as_string())
 
