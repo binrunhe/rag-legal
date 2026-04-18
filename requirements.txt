@@ -9,5 +9,7 @@ uvicorn
 sqlalchemy>=2.0
 aiosqlite
 passlib[bcrypt]
+argon2-cffi
 pydantic-settings
 email-validator
+python-jose[cryptography]

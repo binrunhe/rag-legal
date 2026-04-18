@@ -10,6 +10,10 @@ export function getApiUrl(path: string) {
 
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
+  if (normalizedPath.startsWith("/api/auth/")) {
+    return normalizedPath;
+  }
+
   if (publicApiBaseUrl) {
     return `${publicApiBaseUrl}${normalizedPath}`;
   }

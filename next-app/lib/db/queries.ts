@@ -16,14 +16,15 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
+import { toPublicProfile } from "@/lib/auth/public-profile";
 import { ChatbotError } from "../errors";
-import { generateUUID } from "../utils";
 import {
   type Chat,
   chat,
   type DBMessage,
   document,
   message,
+  publicProfile,
   type Suggestion,
   stream,
   suggestion,
@@ -47,29 +48,49 @@ export async function getUser(email: string): Promise<User[]> {
   }
 }
 
-export async function createUser(email: string, password: string) {
+export async function createRegisteredUser({
+  email,
+  password,
+  fullName,
+}: {
+  email: string;
+  password: string;
+  fullName: string;
+}) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedName = fullName.trim();
   const hashedPassword = generateHashedPassword(password);
 
   try {
-    return await db.insert(user).values({ email, password: hashedPassword });
-  } catch (_error) {
-    throw new ChatbotError("bad_request:database", "Failed to create user");
-  }
-}
+    return await db.transaction(async (tx) => {
+      const [createdUser] = await tx
+        .insert(user)
+        .values({
+          email: normalizedEmail,
+          password: hashedPassword,
+          fullName: normalizedName,
+          role: "user",
+        })
+        .returning({
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role,
+        });
 
-export async function createGuestUser() {
-  const email = `guest-${Date.now()}`;
-  const password = generateHashedPassword(generateUUID());
+      await tx.insert(publicProfile).values(
+        toPublicProfile({
+          userId: createdUser.id,
+          fullName: createdUser.fullName ?? normalizedName,
+        })
+      );
 
-  try {
-    return await db.insert(user).values({ email, password }).returning({
-      id: user.id,
-      email: user.email,
+      return createdUser;
     });
   } catch (_error) {
     throw new ChatbotError(
       "bad_request:database",
-      "Failed to create guest user"
+      "Failed to create registered user"
     );
   }
 }

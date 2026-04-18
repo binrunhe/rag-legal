@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { createUser, getUser } from "@/lib/db/queries";
+import { createRegisteredUser, getUser } from "@/lib/db/queries";
 
 import { signIn } from "./auth";
 
@@ -49,36 +49,80 @@ export type RegisterActionState = {
     | "failed"
     | "user_exists"
     | "invalid_data";
+  data: {
+    user?: {
+      id: string;
+      email: string;
+      role: "user";
+    };
+  } | null;
+  msg: string;
 };
+
+const registerFormSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  fullName: z.string().trim().min(2),
+});
 
 export const register = async (
   _: RegisterActionState,
   formData: FormData
 ): Promise<RegisterActionState> => {
   try {
-    const validatedData = authFormSchema.parse({
+    const validatedData = registerFormSchema.parse({
       email: formData.get("email"),
       password: formData.get("password"),
+      fullName: formData.get("fullName"),
     });
 
-    const [user] = await getUser(validatedData.email);
+    const normalizedEmail = validatedData.email.trim().toLowerCase();
+    const [user] = await getUser(normalizedEmail);
 
     if (user) {
-      return { status: "user_exists" } as RegisterActionState;
+      return {
+        status: "user_exists",
+        data: null,
+        msg: "账号已存在",
+      };
     }
-    await createUser(validatedData.email, validatedData.password);
+
+    const createdUser = await createRegisteredUser({
+      email: normalizedEmail,
+      password: validatedData.password,
+      fullName: validatedData.fullName,
+    });
+
     await signIn("credentials", {
-      email: validatedData.email,
+      email: normalizedEmail,
       password: validatedData.password,
       redirect: false,
     });
 
-    return { status: "success" };
+    return {
+      status: "success",
+      data: {
+        user: {
+          id: createdUser.id,
+          email: createdUser.email,
+          role: createdUser.role,
+        },
+      },
+      msg: "注册成功",
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { status: "invalid_data" };
+      return {
+        status: "invalid_data",
+        data: null,
+        msg: "参数校验失败",
+      };
     }
 
-    return { status: "failed" };
+    return {
+      status: "failed",
+      data: null,
+      msg: "注册失败",
+    };
   }
 };

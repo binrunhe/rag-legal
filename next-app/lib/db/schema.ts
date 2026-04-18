@@ -15,7 +15,8 @@ export const user = pgTable("User", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   email: varchar("email", { length: 64 }).notNull(),
   password: varchar("password", { length: 64 }),
-  name: text("name"),
+  fullName: text("fullName").notNull().default(""),
+  role: varchar("role", { enum: ["user"] }).notNull().default("user"),
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
   isAnonymous: boolean("isAnonymous").notNull().default(false),
@@ -24,6 +25,17 @@ export const user = pgTable("User", {
 });
 
 export type User = InferSelectModel<typeof user>;
+
+export const publicProfile = pgTable("PublicProfile", {
+  userId: uuid("userId")
+    .primaryKey()
+    .notNull()
+    .references(() => user.id),
+  fullName: text("fullName").notNull().default(""),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type PublicProfile = InferSelectModel<typeof publicProfile>;
 
 export const chat = pgTable("Chat", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),

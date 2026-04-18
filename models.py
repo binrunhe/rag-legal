@@ -23,7 +23,9 @@ class User(Base):
     provider: Mapped[str] = mapped_column(String(32), nullable=False, default="local")
     google_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="user")
     tier: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
+    is_premium: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(

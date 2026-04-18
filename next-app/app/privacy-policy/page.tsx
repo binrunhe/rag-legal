@@ -81,9 +81,6 @@ export default function PrivacyPolicyPage() {
             <Button asChild>
               <Link href="/login">返回登录</Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link href="/legal-assistant">进入法律助手</Link>
-            </Button>
           </div>
         </div>
       </div>

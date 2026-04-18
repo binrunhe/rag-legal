@@ -1,17 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "@/components/chat/toast";
 import { AnimatedCharacters } from "@/components/ui/animated-characters";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button";
+import { Label } from "@/components/ui/label";
+import { login } from "@/lib/api/auth";
+import { saveAuthSession } from "@/lib/auth/session-client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,68 +25,45 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
 
-  const validEmail = process.env.NEXT_PUBLIC_LOGIN_EMAIL ?? "demo@falvguwen.ai";
-  const validPassword = process.env.NEXT_PUBLIC_LOGIN_PASSWORD ?? "123456";
-  const redirectPath = "/legal-assistant";
+  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  const persistSession = (userEmail: string, provider: "password" | "google" | "guest") => {
-    const payload = JSON.stringify({
-      userEmail,
-      provider,
-      signedInAt: new Date().toISOString(),
-    });
-
-    if (remember) {
-      localStorage.setItem("legal_auth_session", payload);
-      sessionStorage.removeItem("legal_auth_session");
+    if (isLoading) {
       return;
     }
 
-    sessionStorage.setItem("legal_auth_session", payload);
-    localStorage.removeItem("legal_auth_session");
-  };
-
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
     setIsLoading(true);
     setError("");
 
-    window.setTimeout(() => {
-      const isValidUser = email.trim().toLowerCase() === validEmail.toLowerCase();
-      const isValidPassword = password === validPassword;
+    try {
+      const response = await login({
+        email: email.trim(),
+        password,
+      });
 
-      if (!isValidUser || !isValidPassword) {
-        setError("邮箱或密码不正确，请重试。");
-        setIsLoading(false);
-        return;
-      }
-
-      persistSession(email.trim().toLowerCase(), "password");
+      const role = response.data.user.role;
+      saveAuthSession({
+        token: response.data.token.access_token,
+        userEmail: response.data.user.email,
+        role,
+        expiresInSeconds: response.data.token.expires_in,
+        remember,
+      });
+      toast({
+        type: "success",
+        description: response.msg || "登录成功",
+      });
+      router.push(role === "admin" ? "/admin" : "/legal-assistant");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "邮箱或密码不正确，请重试。";
+      setError(message);
+      toast({
+        type: "error",
+        description: message,
+      });
+    } finally {
       setIsLoading(false);
-      router.push(redirectPath);
-    }, 380);
-  };
-
-  const handleGoogleSignIn = () => {
-    setIsLoading(true);
-    setError("");
-
-    window.setTimeout(() => {
-      persistSession("demo.google@falvguwen.ai", "google");
-      setIsLoading(false);
-      router.push(redirectPath);
-    }, 260);
-  };
-
-  const handleGuestLogin = () => {
-    setIsLoading(true);
-    setError("");
-
-    window.setTimeout(() => {
-      persistSession("guest@falvguwen.local", "guest");
-      setIsLoading(false);
-      router.push(redirectPath);
-    }, 260);
+    }
   };
 
   return (
@@ -112,16 +91,10 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-20 flex items-center gap-8 text-sm text-gray-600 dark:text-gray-700">
-          <Link
-            href="/privacy-policy"
-            className="hover:text-gray-900 dark:hover:text-black transition-colors"
-          >
+          <Link href="/privacy-policy" className="hover:text-gray-900 dark:hover:text-black transition-colors">
             隐私政策
           </Link>
-          <Link
-            href="/terms-of-service"
-            className="hover:text-gray-900 dark:hover:text-black transition-colors"
-          >
+          <Link href="/terms-of-service" className="hover:text-gray-900 dark:hover:text-black transition-colors">
             服务条款
           </Link>
         </div>
@@ -146,7 +119,7 @@ export default function LoginPage() {
 
           <div className="text-center mb-10">
             <h1 className="text-3xl font-bold tracking-tight mb-2">欢迎回来</h1>
-            <p className="text-muted-foreground text-sm">请输入你的登录信息</p>
+            <p className="text-muted-foreground text-sm">使用邮箱和密码登录你的账户</p>
           </div>
 
           <form onSubmit={onSubmit} className="space-y-5">
@@ -158,7 +131,8 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 placeholder="you@example.com"
-                autoComplete="off"
+                autoComplete="email"
+                required
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 onFocus={() => setIsTyping(true)}
@@ -176,6 +150,7 @@ export default function LoginPage() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
+                  required
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   className="h-12 pr-10 bg-background border-border/60 focus:border-primary"
@@ -201,7 +176,7 @@ export default function LoginPage() {
                   30 天内记住我
                 </Label>
               </div>
-              <Link href="/login" className="text-sm text-primary hover:underline font-medium">
+              <Link href="/forgot-password" className="text-sm text-primary hover:underline font-medium">
                 忘记密码
               </Link>
             </div>
@@ -220,44 +195,10 @@ export default function LoginPage() {
             />
           </form>
 
-          <div className="mt-6 space-y-3">
-            <InteractiveHoverButton
-              type="button"
-              text="使用 Google 登录"
-              className="w-full h-12 border-border/60"
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
-              icon={
-                <svg
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                  focusable="false"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 488 512"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 76.2C322.3 113.2 289.4 96 248 96c-88.8 0-160.1 71.9-160.1 160.1s71.3 160.1 160.1 160.1c98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 26.9 3.9 41.4z"
-                  />
-                </svg>
-              }
-            />
-
-            <Button
-              type="button"
-              variant="secondary"
-              className="h-12 w-full text-base"
-              onClick={handleGuestLogin}
-              disabled={isLoading}
-            >
-              访客登录
-            </Button>
-          </div>
-
           <div className="text-center text-sm text-muted-foreground mt-8">
             还没有账号？{" "}
-            <Link href="/login" className="text-foreground font-medium hover:underline">
-              先体验访客登录
+            <Link href="/register" className="text-foreground font-medium hover:underline">
+              立即注册
             </Link>
           </div>
         </div>

@@ -15,6 +15,11 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { getApiUrl } from "@/lib/api-url";
+import {
+  clearAuthSession,
+  getStoredAuthSession,
+  validateStoredAuthSession,
+} from "@/lib/auth/session-client";
 import { cn } from "@/lib/utils";
 
 type ChatRole = "user" | "assistant";
@@ -175,14 +180,31 @@ export default function LegalAssistantPage() {
   const [isSending, setIsSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [authChecking, setAuthChecking] = useState(true);
   const messagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const sessionValue = sessionStorage.getItem("legal_auth_session");
-    const localValue = localStorage.getItem("legal_auth_session");
-    if (!sessionValue && !localValue) {
-      router.replace("/login");
-    }
+    let isMounted = true;
+
+    const runAuthCheck = async () => {
+      const result = await validateStoredAuthSession();
+      if (!isMounted) {
+        return;
+      }
+
+      if (!result.ok) {
+        router.replace("/login");
+        return;
+      }
+
+      setAuthChecking(false);
+    };
+
+    void runAuthCheck();
+
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   useEffect(() => {
@@ -221,10 +243,15 @@ export default function LegalAssistantPage() {
     setIsSending(true);
 
     try {
+      const session = getStoredAuthSession();
+
       const response = await fetch(getApiUrl("/api/chat"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(session?.accessToken
+            ? { Authorization: `Bearer ${session.accessToken}` }
+            : {}),
         },
         credentials: "include",
         body: JSON.stringify({
@@ -289,10 +316,17 @@ export default function LegalAssistantPage() {
   };
 
   const logout = () => {
-    localStorage.removeItem("legal_auth_session");
-    sessionStorage.removeItem("legal_auth_session");
+    clearAuthSession();
     router.replace("/login");
   };
+
+  if (authChecking) {
+    return (
+      <div className="flex h-dvh w-full items-center justify-center bg-background text-sm text-muted-foreground">
+        正在校验登录状态...
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-dvh w-full flex-row overflow-hidden bg-sidebar">

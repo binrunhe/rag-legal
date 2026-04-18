@@ -38,3 +38,13 @@ async def init_db() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(ModelsBase.metadata.create_all)
+        result = await conn.exec_driver_sql("PRAGMA table_info(users)")
+        columns = {row[1] for row in result.fetchall()}
+        if "role" not in columns:
+            await conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'user'"
+            )
+        if "is_premium" not in columns:
+            await conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN is_premium BOOLEAN NOT NULL DEFAULT 1"
+            )
