@@ -349,6 +349,15 @@ async def chat_endpoint(req: ChatRequest):
         # 1. 意图重写
         search_query = rewrite_query(req.query, req.history, Config.RAG_MODEL)
 
+        # 非法律意图初步拦截
+        if "【非法律意图】" in search_query:
+            print("🚫 判定：非法律问题，直接拒答")
+            return {
+                "answer": "抱歉，我仅提供法律咨询服务，无法回答与法律无关的内容。",
+                "references": [],
+                "status": "reject_non_legal"
+            }
+
         # 2. 意图预判 (继承你 main.py 里的逻辑)
         skip_words = ["总结", "记忆", "之前", "聊了什么", "你是谁"]
         should_skip_search = any(word in search_query for word in skip_words)
@@ -371,8 +380,92 @@ async def chat_endpoint(req: ChatRequest):
             # 4. 动态重排 (传入前端指定的 top_n 和 threshold)
             final_docs = rerank_context(search_query, raw_docs, Config.RERANK_MODEL, Config.DEFAULT_MAX_LENGTH, req.top_n, req.threshold)
 
+        # 无结果直接拒答
+        if not final_docs:
+            print("⚠️ 无匹配法条 → 低置信度拒答")
+            return {
+                "answer": "❌ 未查询到相关法律依据，无法提供准确回答。请您描述更具体的法律问题。",
+                "references": [],
+                "status": "reject_low_confidence"
+            }
+
         # 5. 生成回答
         answer = call_ollama_rag(req.query, final_docs, req.history, Config.RAG_MODEL)
+
+        print("\n" + "-" * 30 + " 🤖 初始回答 " + "-" * 30)
+        print(answer)
+
+        # B. 内部质量审计 (重点：强制要求审计员先看用户问得清不清楚)
+        laws_context = "\n".join(
+            [f"《{d['metadata'].get('source')}》{d['metadata'].get('article_number')}: {d['content']}" for d in
+             final_docs])
+
+        check_prompt = f"""
+请作为法律审计员，评估【用户提问】与【模型回答】的关系。
+
+【用户提问】：{req.query}
+【法律依据】：{laws_context}
+【模型回答】：{answer}
+
+任务优先级（仅输出一个标签）：
+1. 判定【用户提问】是否属于极其模糊的法律提问（例如只有“怎么起诉”但没有背景、事由）？如果是，且模型回答在索要信息，必须输出：[需澄清]
+2. 如果【用户提问】完全不属于法律范畴（如烹饪、生活常识、娱乐），输出：[非法律]
+3. 如果模型回答包含捏造法条、内容与提供的法律依据严重冲突，输出：[不合格]
+4. 只有当【用户提问】清晰且模型给出了确切解答时，输出：[合格]
+"""
+        check_result = call_ollama_rag(check_prompt, [], [], Config.RAG_MODEL).strip()
+        print(f"🧐 审计标签: {check_result}")
+
+        # -------------------- 逻辑分流处理 --------------------
+
+        # 1. 识别回答中的“索要信息/反问”信号
+        clarify_signals = ["了解更多信息", "提供以下信息", "具体内容", "描述不清晰", "请您提供", "具体情况是什么",
+                           "什么类型", "具体事实"]
+        model_is_asking = any(sig in answer for sig in clarify_signals)
+
+        # 2. 识别用户提问是否过短 (启发式：短于8个字通常需要更多背景)
+        query_is_vague = len(req.query) < 8
+
+        # 获取当前检索的最高分
+        top_score = final_docs[0].get("rerank_score", -999)
+
+        # 分支一：判定“非法律” (拒答)
+        if "[非法律]" in check_result:
+            print("🚫 二次审计：判定为非法律话题，执行拒答")
+            return {
+                "answer": "抱歉，我是一名法律助手，专注于法律咨询和依据查询。我无法为您提供烹饪、生活常识或其他非法律领域的建议。",
+                "references": [],
+                "status": "reject_non_legal"
+            }
+
+        # 分支二：判定“需澄清” (引导提问)
+        # 逻辑：审计员判定需澄清 OR (模型在问问题 且 (用户问得太简单 或 匹配分数不高))
+        if "[需澄清]" in check_result or (model_is_asking and (query_is_vague or top_score < 0.5)):
+            print(f"🔍 综合判定：满足澄清条件 (标签: {check_result}, 提问极短: {query_is_vague}, 得分: {top_score:.2f})")
+
+            # 策略：如果模型生成的反问句很精练（300字内），直接用它；否则用默认话术
+            clarify_answer = answer if len(answer) < 300 else "您的问题描述较为模糊。为了准确匹配法律依据，请补充具体细节（如：纠纷起因、涉及的金额或具体的合同类型）。"
+
+            return {
+                "answer": clarify_answer,
+                "references": [],
+                "status": "need_clarify"
+            }
+
+        # 分支三：判定“不合格” (重写)
+        if "[不合格]" in check_result:
+            print("⚠️ 审计判定回答质量未达标，尝试二次修正...")
+            rewrite_prompt = f"""
+你刚才的回答被审计判定为不合格（理由：{check_result}）。
+请严格遵守以下【法律依据】，重新专业地回答用户问题。若法律依据中没有相关内容，请诚实告知。
+
+【法律依据】：
+{laws_context}
+【用户问题】：
+{req.query}
+"""
+            answer = call_ollama_rag(rewrite_prompt, [], req.history, Config.RAG_MODEL)
+            print("✅ 修正后的回答已重新生成")
 
         # 清理显存碎片 (继承自你原本的 main.py)
         if torch.cuda.is_available():
