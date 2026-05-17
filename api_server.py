@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 import asyncio
 from datetime import datetime, timedelta, timezone
+import inspect
+import json
 import os
 
 from fastapi import FastAPI, HTTPException, Request
@@ -336,6 +338,87 @@ class ChatRequest(BaseModel):
     threshold: Optional[float] = Config.DEFAULT_THRESHOLD       # 决定过滤掉多少低分法条
     force_search: Optional[bool] = True                         # 是否强制开启检索（应对闲聊）
 
+
+class AuditResult(BaseModel):
+    status: Literal["success", "need_clarify", "reject_non_legal", "rewrite"]
+    answer: str
+    reason: Optional[str] = None
+
+
+async def _call_maybe_async(func, *args, **kwargs):
+    if inspect.iscoroutinefunction(func):
+        return await func(*args, **kwargs)
+
+    result = await asyncio.to_thread(func, *args, **kwargs)
+    if inspect.iscoroutine(result):
+        return await result
+
+    return result
+
+
+def _safe_parse_audit_result(raw_text: str) -> AuditResult | None:
+    try:
+        payload = json.loads(raw_text)
+    except json.JSONDecodeError:
+        extracted = _extract_first_json(raw_text)
+        if not extracted:
+            return None
+        try:
+            payload = json.loads(extracted)
+        except json.JSONDecodeError:
+            return None
+
+    try:
+        model_validate = getattr(AuditResult, "model_validate", None)
+        if callable(model_validate):
+            return model_validate(payload)
+        return AuditResult.parse_obj(payload)
+    except Exception:
+        return None
+
+
+def _extract_first_json(text: str) -> str | None:
+    if not text:
+        return None
+
+    start = text.find("{")
+    if start == -1:
+        return None
+
+    depth = 0
+    in_string = False
+    escape = False
+
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_string:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+            continue
+
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+
+    return None
+
+
+def _default_clarify_answer() -> str:
+    return "您的问题描述较为模糊。为了准确匹配法律依据，请补充具体细节（如：纠纷起因、涉及的金额或具体的合同类型）。"
+
 # ==========================================
 # 核心对话接口
 # ==========================================
@@ -347,7 +430,14 @@ async def chat_endpoint(req: ChatRequest):
         print(f"⚙️  [前端配置] top_n={req.top_n}, n_results={req.n_results}, 历史对话轮数={len(req.history)}")
 
         # 1. 意图重写
-        search_query = rewrite_query(req.query, req.history, Config.RAG_MODEL)
+        search_query = await _call_maybe_async(
+            rewrite_query,
+            req.query,
+            req.history,
+            Config.RAG_MODEL,
+        )
+        if not search_query:
+            search_query = req.query
 
         # 非法律意图初步拦截
         if "【非法律意图】" in search_query:
@@ -365,7 +455,13 @@ async def chat_endpoint(req: ChatRequest):
         # 如果前端强制关掉了检索，或者触发了闲聊词
         if not req.force_search or should_skip_search:
             print("🔀 [流转] 判定为闲聊或前端关闭检索，直接进入大模型回复。")
-            answer = call_ollama_rag(req.query, [], req.history, Config.RAG_MODEL)
+            answer = await _call_maybe_async(
+                call_ollama_rag,
+                req.query,
+                [],
+                req.history,
+                Config.RAG_MODEL,
+            )
             return {
                 "answer": answer,
                 "references": [],  # 没有检索，溯源卡片为空
@@ -373,12 +469,27 @@ async def chat_endpoint(req: ChatRequest):
             }
 
         # 3. 混合检索
-        raw_docs = run_search(search_query, Config.DB_PATH, Config.COLLECTION_NAME, Config.SEARCH_MODEL, req.n_results)
+        raw_docs = await _call_maybe_async(
+            run_search,
+            search_query,
+            Config.DB_PATH,
+            Config.COLLECTION_NAME,
+            Config.SEARCH_MODEL,
+            req.n_results,
+        )
 
         final_docs = []
         if raw_docs:
             # 4. 动态重排 (传入前端指定的 top_n 和 threshold)
-            final_docs = rerank_context(search_query, raw_docs, Config.RERANK_MODEL, Config.DEFAULT_MAX_LENGTH, req.top_n, req.threshold)
+            final_docs = await _call_maybe_async(
+                rerank_context,
+                search_query,
+                raw_docs,
+                Config.RERANK_MODEL,
+                Config.DEFAULT_MAX_LENGTH,
+                req.top_n,
+                req.threshold,
+            )
 
         # 无结果直接拒答
         if not final_docs:
@@ -389,39 +500,61 @@ async def chat_endpoint(req: ChatRequest):
                 "status": "reject_low_confidence"
             }
 
-        # 5. 生成回答
-        answer = call_ollama_rag(req.query, final_docs, req.history, Config.RAG_MODEL)
-
-        print("\n" + "-" * 30 + " 🤖 初始回答 " + "-" * 30)
-        print(answer)
-
-        # B. 内部质量审计 (重点：强制要求审计员先看用户问得清不清楚)
+        # 5. 生成 + 审计合并为一次调用 (结构化 JSON 输出)
         laws_context = "\n".join(
-            [f"《{d['metadata'].get('source')}》{d['metadata'].get('article_number')}: {d['content']}" for d in
-             final_docs])
+            [
+                f"《{d['metadata'].get('source')}》{d['metadata'].get('article_number')}: {d['content']}"
+                for d in final_docs
+            ]
+        )
 
-        check_prompt = f"""
-请作为法律审计员，评估【用户提问】与【模型回答】的关系。
+        audit_prompt = f"""
+你是法律助手与审计员。请基于【用户提问】和【法律依据】给出最终回答，并用严格 JSON 输出。
+输出必须是单行 JSON，不要包含代码块或额外文本。
+
+JSON 格式：
+{{"status":"success|need_clarify|reject_non_legal|rewrite","answer":"...","reason":"..."}}
+
+规则：
+1. 若用户问题与法律无关 -> status=reject_non_legal，answer=固定拒答话术。
+2. 若问题过于模糊且需要补充 -> status=need_clarify，answer=澄清问题（<=300字）。
+3. 若需要纠正/重写以严格匹配法律依据 -> status=rewrite，answer=纠正后的最终回答。
+4. 其他情况 -> status=success，answer=最终回答。
+reason 用一句话说明判断依据。
+
+固定拒答话术："抱歉，我是一名法律助手，专注于法律咨询和依据查询。我无法为您提供烹饪、生活常识或其他非法律领域的建议。"
 
 【用户提问】：{req.query}
 【法律依据】：{laws_context}
-【模型回答】：{answer}
-
-任务优先级（仅输出一个标签）：
-1. 判定【用户提问】是否属于极其模糊的法律提问（例如只有“怎么起诉”但没有背景、事由）？如果是，且模型回答在索要信息，必须输出：[需澄清]
-2. 如果【用户提问】完全不属于法律范畴（如烹饪、生活常识、娱乐），输出：[非法律]
-3. 如果模型回答包含捏造法条、内容与提供的法律依据严重冲突，输出：[不合格]
-4. 只有当【用户提问】清晰且模型给出了确切解答时，输出：[合格]
 """
-        check_result = call_ollama_rag(check_prompt, [], [], Config.RAG_MODEL).strip()
-        print(f"🧐 审计标签: {check_result}")
+
+        raw_audit = await _call_maybe_async(
+            call_ollama_rag,
+            audit_prompt,
+            [],
+            req.history,
+            Config.RAG_MODEL,
+        )
+        raw_audit = (raw_audit or "").strip()
+        audit = _safe_parse_audit_result(raw_audit)
+
+        if not audit:
+            print("⚠️ 审计 JSON 解析失败，启用降级策略")
+            if raw_audit:
+                audit = AuditResult(status="success", answer=raw_audit, reason="fallback_raw_text")
+            else:
+                audit = AuditResult(status="need_clarify", answer=_default_clarify_answer(), reason="fallback_empty")
+
+        print("\n" + "-" * 30 + " 🤖 初始回答 " + "-" * 30)
+        print(audit.answer)
+        print(f"🧐 审计标签: {audit.status}")
 
         # -------------------- 逻辑分流处理 --------------------
 
         # 1. 识别回答中的“索要信息/反问”信号
         clarify_signals = ["了解更多信息", "提供以下信息", "具体内容", "描述不清晰", "请您提供", "具体情况是什么",
                            "什么类型", "具体事实"]
-        model_is_asking = any(sig in answer for sig in clarify_signals)
+        model_is_asking = any(sig in audit.answer for sig in clarify_signals)
 
         # 2. 识别用户提问是否过短 (启发式：短于8个字通常需要更多背景)
         query_is_vague = len(req.query) < 8
@@ -430,7 +563,7 @@ async def chat_endpoint(req: ChatRequest):
         top_score = final_docs[0].get("rerank_score", -999)
 
         # 分支一：判定“非法律” (拒答)
-        if "[非法律]" in check_result:
+        if audit.status == "reject_non_legal":
             print("🚫 二次审计：判定为非法律话题，执行拒答")
             return {
                 "answer": "抱歉，我是一名法律助手，专注于法律咨询和依据查询。我无法为您提供烹饪、生活常识或其他非法律领域的建议。",
@@ -440,11 +573,10 @@ async def chat_endpoint(req: ChatRequest):
 
         # 分支二：判定“需澄清” (引导提问)
         # 逻辑：审计员判定需澄清 OR (模型在问问题 且 (用户问得太简单 或 匹配分数不高))
-        if "[需澄清]" in check_result or (model_is_asking and (query_is_vague or top_score < 0.5)):
-            print(f"🔍 综合判定：满足澄清条件 (标签: {check_result}, 提问极短: {query_is_vague}, 得分: {top_score:.2f})")
+        if audit.status == "need_clarify" or (model_is_asking and (query_is_vague or top_score < 0.5)):
+            print(f"🔍 综合判定：满足澄清条件 (标签: {audit.status}, 提问极短: {query_is_vague}, 得分: {top_score:.2f})")
 
-            # 策略：如果模型生成的反问句很精练（300字内），直接用它；否则用默认话术
-            clarify_answer = answer if len(answer) < 300 else "您的问题描述较为模糊。为了准确匹配法律依据，请补充具体细节（如：纠纷起因、涉及的金额或具体的合同类型）。"
+            clarify_answer = audit.answer if len(audit.answer) < 300 else _default_clarify_answer()
 
             return {
                 "answer": clarify_answer,
@@ -453,19 +585,8 @@ async def chat_endpoint(req: ChatRequest):
             }
 
         # 分支三：判定“不合格” (重写)
-        if "[不合格]" in check_result:
-            print("⚠️ 审计判定回答质量未达标，尝试二次修正...")
-            rewrite_prompt = f"""
-你刚才的回答被审计判定为不合格（理由：{check_result}）。
-请严格遵守以下【法律依据】，重新专业地回答用户问题。若法律依据中没有相关内容，请诚实告知。
-
-【法律依据】：
-{laws_context}
-【用户问题】：
-{req.query}
-"""
-            answer = call_ollama_rag(rewrite_prompt, [], req.history, Config.RAG_MODEL)
-            print("✅ 修正后的回答已重新生成")
+        if audit.status == "rewrite":
+            print("⚠️ 审计判定回答需重写，已使用修正答案。")
 
         # 清理显存碎片 (继承自你原本的 main.py)
         if torch.cuda.is_available():
@@ -486,7 +607,7 @@ async def chat_endpoint(req: ChatRequest):
         print("="*50 + "\n")
 
         return {
-            "answer": answer,
+            "answer": audit.answer,
             "references": formatted_references,
             "status": "success"
         }
@@ -502,6 +623,8 @@ required_origins = [
     "https://register.rag-legal.pages.dev",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
     "https://rag-legal-jet.vercel.app",
     "https://rag-legal-git-main-hehe051104s-projects.vercel.app",
     "https://rag-legal-git-chatbot-hehe051104s-projects.vercel.app",
